@@ -165,6 +165,23 @@ Legacy env vars (`PRIVATE_MIND_LLM_*`) still work if no LLM vault account is pre
 
 ---
 
+## Worker network (M3 — local)
+
+Pair a **second process** (or another machine later) without giving it your vault or memory DB:
+
+```bash
+privatemind node init
+privatemind worker init
+privatemind worker pair <worker-fingerprint> --public-key-b64 <...>
+privatemind worker lease <worker-fingerprint> --operation compute_sha256
+privatemind worker serve    # terminal A
+privatemind worker demo     # terminal B
+```
+
+See [docs/WORKER_PROTOCOL.md](docs/WORKER_PROTOCOL.md).
+
+---
+
 ## Dedicated server (brain + body on one host)
 
 If you run PrivateMind on its **own server** and plan to **grant tools as it asks**, use the request queue (do not paste credentials into chat):

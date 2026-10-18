@@ -53,6 +53,31 @@ Python datatypes in `src/privatemind/worker/contract.py` mirror this envelope:
 
 Executive memory already stores tool/worker output as `tool_output` / `unverified` until the trusted core promotes or rejects.
 
-## Status
+## Status (M3 — local TCP prototype)
 
-Networking, pairing, and cryptography are **not implemented**. The contract is grounded in the current executive/memory model for M3 implementation.
+Implemented on **localhost**:
+
+| Feature | Status |
+|---------|--------|
+| Ed25519 node identities | `privatemind node init`, `privatemind worker init` |
+| Operator pairing | `privatemind worker pair` |
+| Scoped leases | `privatemind worker lease` |
+| Signed envelopes v1 | `worker/envelope.py` |
+| Replay cache | `worker_replay` table |
+| TCP job offer / result | `privatemind worker serve` on `127.0.0.1:8765` |
+| Correctness check | `compute_sha256` recomputed in core (authentic but false → rejected) |
+
+Not yet: mTLS/Noise WAN transport, worker advertisements, Sybil/quarantine policies, general proof systems.
+
+### Quick demo
+
+```bash
+privatemind node init
+privatemind worker init
+privatemind worker pair <worker-fp> --public-key-b64 <worker-pub>
+privatemind worker lease <worker-fp> --operation compute_sha256
+# terminal A:
+privatemind worker serve
+# terminal B:
+privatemind worker demo --text hello
+```

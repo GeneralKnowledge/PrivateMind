@@ -25,10 +25,20 @@
 - `gh pr create` not integrated — open PR manually on pushed branch.
 - LLM planner optional for non-workflow tasks; heuristic demo still Milestone 1 only.
 
+## Worker network (M3 — local)
+
+| Feature | Evidence |
+|---------|----------|
+| Ed25519 identities + pairing | `tests/test_worker_network.py` |
+| Signed job/response | `worker/hub.py`, `worker/service.py` |
+| Replay protection | `worker/pairing_store.py` |
+| False signed result rejected | `test_false_signed_result_rejected` |
+
+WAN mTLS, multi-tenant leases, quarantine — not implemented.
+
 ## Not implemented
 
-- Worker network transport (M3) — contract stubs in `src/privatemind/worker/contract.py`
-- Adversarial worker verification pipeline (M4)
+- Full adversarial worker pipeline (M4 generalisation beyond sha256)
 - Resource leases and multi-contributor scheduling (M5+)
 - Autonomous production promotion
 

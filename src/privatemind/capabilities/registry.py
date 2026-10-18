@@ -71,6 +71,16 @@ DEFAULT_CAPABILITIES: list[Capability] = [
         trust={"runs_locally": True, "credentials": "vault_github_account"},
         enabled=True,
     ),
+    Capability(
+        id="tool.worker_delegate",
+        name="Paired worker delegation",
+        kind="tool",
+        description="Submit scoped jobs to paired workers over signed TCP",
+        operations=["worker_delegate"],
+        limits={"transport": "tcp_local", "requires_lease": True},
+        trust={"isolation": "worker_process", "verification": "authenticity_and_correctness"},
+        enabled=True,
+    ),
 ]
 
 
