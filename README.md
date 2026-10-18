@@ -194,6 +194,8 @@ pytest tests/test_self_improvement_loop.py -q
 | `privatemind status` | Tasks, checkpoint, human help queue |
 | `privatemind portal serve` | Local web hub for donor/helper instructions + intents |
 | `privatemind portal intents list` | Review submitted donor intents |
+| `privatemind log` | Recent activity (wake, tick, tools, mode) — [docs/ACTIVITY_LOG.md](docs/ACTIVITY_LOG.md) |
+| `privatemind log --follow` | Poll activity while debugging |
 | `privatemind demo --run` | Offline milestone demo (no vault required) |
 | `privatemind capabilities` | Registered models/tools |
 

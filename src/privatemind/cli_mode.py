@@ -8,6 +8,7 @@ from pathlib import Path
 import click
 
 from privatemind.config import Settings
+from privatemind.core.agent import PrivateMindCore
 from privatemind.operational.mode import (
     operational_status,
     write_mode_state,
@@ -43,4 +44,6 @@ def mode_set(ctx: click.Context, name: str, notes: str) -> None:
     """Persist operational mode for this brain."""
     settings = _settings(ctx.obj.get("data_dir"))
     payload = write_mode_state(settings.data_dir, mode=name, notes=notes)
+    core = PrivateMindCore(settings=settings)
+    core.audit.record("operational_mode", mode=name, notes=notes.strip())
     click.echo(json.dumps({"saved": payload, "path": str(settings.data_dir / "operational_mode.json")}, indent=2))

@@ -218,7 +218,16 @@ class PrivateMindCore:
             task = self.tasks.next_runnable()
             if not task:
                 break
-            results.append(self._run_task_step(task))
+            step_out = self._run_task_step(task)
+            results.append(step_out)
+            self.audit.record(
+                "executive_step",
+                task_id=step_out.get("task_id"),
+                state=step_out.get("state"),
+                completed=step_out.get("completed"),
+                blocked=step_out.get("blocked"),
+                tool=step_out.get("tool") if isinstance(step_out.get("tool"), str) else None,
+            )
         return results
 
     def run_until_idle(self, *, max_iterations: int = 50) -> list[dict[str, Any]]:

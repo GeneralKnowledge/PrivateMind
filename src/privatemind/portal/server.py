@@ -157,6 +157,23 @@ def make_handler(
                 paid_service_donation=payload.get("paid_service_donation"),
                 estimated_monthly_usd=est_f,
             )
+            try:
+                from privatemind.audit.log import AuditLog
+                from privatemind.config import Settings
+                from privatemind.db import Database
+
+                settings = Settings(data_dir=data_dir)
+                db = Database(settings.db_path)
+                db.initialize()
+                AuditLog(db).record(
+                    "donor_intent",
+                    intent_id=record.get("intent_id"),
+                    display_name=record.get("display_name"),
+                    offer=record.get("offer"),
+                    commitment_level=record.get("commitment_level"),
+                )
+            except OSError:
+                pass
             self._send_json(HTTPStatus.CREATED, {"intent": record})
 
     return PortalHandler

@@ -50,6 +50,12 @@ class WakeController:
         result.update({"readiness": report.to_dict(), "health": [], "tasks": []})
 
         if report.level != ReadinessLevel.ALIVE:
+            self.audit.record(
+                "wake",
+                activated=False,
+                level=report.level.value,
+                missing=report.missing,
+            )
             self.memory.upsert(
                 kind="system",
                 key="lifecycle.state",
@@ -168,6 +174,13 @@ class WakeController:
 
         result["activated"] = True
         result["model"] = create_model_from_vault(self.vault).model_id
+        self.audit.record(
+            "wake",
+            activated=True,
+            level=report.level.value,
+            model=result["model"],
+            operational_mode=result.get("operational_mode", {}).get("mode"),
+        )
         return result
 
     def _ensure_bootstrap_task(self) -> dict[str, Any] | None:

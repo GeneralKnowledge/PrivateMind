@@ -4,6 +4,7 @@ from pathlib import Path
 import click
 
 from privatemind.cli_accounts import account_group, vault_group
+from privatemind.cli_log import log_cmd
 from privatemind.cli_mode import mode_group
 from privatemind.cli_portal import portal_group
 from privatemind.cli_worker import worker_group
@@ -43,6 +44,7 @@ def init_cmd(ctx: click.Context) -> None:
         dm = default_mode_for_install()
         write_mode_state(core.settings.data_dir, mode=dm, notes="default after init")
         click.echo(f"Operational mode: {dm} (see docs/OPERATIONAL_MODES.md)")
+    core.audit.record("system_init", data_dir=str(core.settings.data_dir))
     if not core.vault.exists:
         click.echo("Next: privatemind vault init — then see docs/FIRST_BOOT_ADMIN.md and README.")
 
@@ -52,6 +54,7 @@ main.add_command(account_group, name="account")
 main.add_command(worker_group, name="worker")
 main.add_command(portal_group, name="portal")
 main.add_command(mode_group, name="mode")
+main.add_command(log_cmd)
 
 
 @main.group()
@@ -153,6 +156,12 @@ def tick_cmd(ctx: click.Context, steps: int) -> None:
     """Advance the executive by up to N task steps."""
     core = _core(ctx.obj["data_dir"])
     results = core.tick(max_steps=steps)
+    core.audit.record(
+        "executive_tick",
+        requested_steps=steps,
+        executed=len(results),
+        last_state=results[-1].get("state") if results else None,
+    )
     click.echo(json.dumps(results, indent=2))
 
 

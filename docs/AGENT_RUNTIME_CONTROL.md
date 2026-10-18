@@ -28,6 +28,9 @@ Document and implement via **draft PRs**, not silent production edits:
 | **Donor intents** | JSONL queue | Triage, draft playbooks, graph updates, assistance — not auto-approve keys |
 | **Install / upgrade** | `git pull` + pip | Self-improvement branch: bump deps, extend install.sh — **you merge** |
 | **Worker pairing** | CLI | Schedule smoke jobs in `test` mode; document donor topology |
+| **Activity log** | `privatemind log` | Summarize recent categories; detect stuck loops; propose mode throttles |
+
+Read [ACTIVITY_LOG.md](ACTIVITY_LOG.md) on wake (`log --limit 20 --json` internally or via tool later).
 
 The agent should record intent in memory (`system` / limitation) and **`research operational-mode`** before changing posture.
 
