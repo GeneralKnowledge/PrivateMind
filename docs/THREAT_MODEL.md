@@ -17,7 +17,7 @@ This document covers v0.1 (local trusted core) and stated assumptions for upcomi
 |-----------|---------|------------------|------|
 | Malicious prompt injection via task text | Hidden instructions in description | System prompt + core parses actions; no direct exec | Model may choose bad actions if LLM backend used without review |
 | Malicious worker | Signed but false compute result | `tests/test_worker_adversarial.py` | M4 verification + auto-quarantine |
-| Malicious contributor (future) | Sybil workers | N/A yet | Leases, reputation-informed checks |
+| Malicious contributor | Sybil workers | reputation sort + leases (M5) | stronger Sybil policy, sandboxed runners |
 | Compromised tool output | Forged JSON | Tools run in-process with fixed API | No sandbox yet for arbitrary code |
 | Malicious repo content (future) | Issue/PR injection | N/A yet | M2 read-only + policy |
 | Malicious self-update (future) | PR weakening verification | N/A yet | Protected branches, human merge |
