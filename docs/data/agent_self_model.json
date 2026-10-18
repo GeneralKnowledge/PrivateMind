@@ -1,0 +1,92 @@
+{
+  "schema_version": "2026-10-18",
+  "title": "Agent self-model skeleton (layers, needs, routing graph)",
+  "maintainer": "executive",
+  "mind_layers_doc": "docs/AGENT_MIND_LAYERS.md",
+  "operator_note": "Empty arrays are intentional. The agent extends needs, graph nodes/edges, and routing_policies; operators set the floor via policy and vault, not by editing this graph for the agent.",
+  "layers": [
+    {
+      "id": "needs",
+      "aliases": ["subconscious", "id"],
+      "description": "Persistent drives and capability pain when resources are missing or fragile.",
+      "feeds_from": [
+        "privatemind research capability-gaps",
+        "limitation_log",
+        "failed API probes",
+        "donor worker health"
+      ],
+      "feeds_into": ["research_priority", "assistance_requests", "needs[] below"]
+    },
+    {
+      "id": "executive",
+      "aliases": ["ego"],
+      "description": "Task planning, scheduling, and choosing which service/worker/key path to use.",
+      "feeds_from": ["needs", "graph.nodes", "graph.edges", "routing_policies"],
+      "feeds_into": ["tasks", "worker_jobs", "draft_prs", "updated graph"]
+    },
+    {
+      "id": "floor",
+      "aliases": ["superego"],
+      "description": "Non-negotiable boundaries: vault, verification, no auto-merge to main, ToS, never_automate.",
+      "feeds_from": [
+        "docs/GRADUATED_AUTONOMY.md",
+        "docs/THREAT_MODEL.md",
+        "agent_capability_domains.never_automate"
+      ],
+      "feeds_into": ["rejections", "quarantine", "forbidden edges in graph"]
+    }
+  ],
+  "needs": [],
+  "graph": {
+    "nodes": [],
+    "edges": []
+  },
+  "routing_policies": [],
+  "vocabulary": {
+    "node_kinds": [
+      "service",
+      "worker",
+      "vault_slot",
+      "capability_domain",
+      "memory_kind"
+    ],
+    "edge_kinds": [
+      "satisfies",
+      "routes_through",
+      "fallback",
+      "forbidden"
+    ],
+    "need_fields_suggested": [
+      "id",
+      "source_domain_id",
+      "severity",
+      "felt_as",
+      "updated_at",
+      "satisfied_by_node_ids"
+    ],
+    "node_fields_suggested": [
+      "id",
+      "kind",
+      "label",
+      "provider_tag",
+      "worker_id",
+      "vault_kind",
+      "volatile",
+      "notes"
+    ],
+    "edge_fields_suggested": [
+      "from",
+      "to",
+      "kind",
+      "when",
+      "notes"
+    ],
+    "routing_policy_fields_suggested": [
+      "id",
+      "task_or_tool",
+      "prefer_node_ids",
+      "fallback_node_ids",
+      "floor_checks"
+    ]
+  }
+}

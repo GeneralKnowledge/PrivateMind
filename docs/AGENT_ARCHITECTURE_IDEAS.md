@@ -54,4 +54,4 @@ If a pattern needs **deception**, it belongs in the **reject** column with a lim
 2. If a pattern helps, write a **short design note** (memory or draft doc PR) with risks and operator asks — e.g. *“Approve Oracle ARM worker as HTTPS egress for Brave only.”*
 3. Do **not** assume the human read this file; link your assistance request to the specific row above.
 
-See also [AGENT_CAPABILITY_MANDATE.md](AGENT_CAPABILITY_MANDATE.md), [DEDICATED_SERVER.md](DEDICATED_SERVER.md), [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md).
+See also [AGENT_CAPABILITY_MANDATE.md](AGENT_CAPABILITY_MANDATE.md), [AGENT_MIND_LAYERS.md](AGENT_MIND_LAYERS.md) (self-map: when to use which worker/service), [DEDICATED_SERVER.md](DEDICATED_SERVER.md), [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md).

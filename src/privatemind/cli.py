@@ -447,6 +447,38 @@ def research_capability_domains(ctx: click.Context) -> None:
     )
 
 
+@research.command("self-model")
+@click.pass_context
+def research_self_model(ctx: click.Context) -> None:
+    """Mind layers skeleton and empty self-map graph (agent extends)."""
+    from privatemind.research.self_model import load_self_model, list_layers
+
+    meta = load_self_model()
+    click.echo(
+        json.dumps(
+            {
+                "schema_version": meta.get("schema_version"),
+                "layers": list_layers(meta),
+                "needs": meta.get("needs", []),
+                "graph": meta.get("graph"),
+                "routing_policies": meta.get("routing_policies", []),
+                "vocabulary": meta.get("vocabulary"),
+                "mind_layers_doc": meta.get("mind_layers_doc"),
+            },
+            indent=2,
+        )
+    )
+
+
+@research.command("self-model-status")
+@click.pass_context
+def research_self_model_status(ctx: click.Context) -> None:
+    """Counts for needs/graph — nudge to self-organise."""
+    from privatemind.research.self_model import self_model_status
+
+    click.echo(json.dumps(self_model_status(), indent=2))
+
+
 @research.command("capability-gaps")
 @click.pass_context
 def research_capability_gaps(ctx: click.Context) -> None:

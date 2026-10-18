@@ -21,9 +21,12 @@ The operator sets **trust floors** ([GRADUATED_AUTONOMY.md](GRADUATED_AUTONOMY.m
 
 Machine-readable checklist: [`data/agent_capability_domains.json`](data/agent_capability_domains.json).
 
+Self-model skeleton (layers, needs, service graph — **you** populate): [`data/agent_self_model.json`](data/agent_self_model.json) and [AGENT_MIND_LAYERS.md](AGENT_MIND_LAYERS.md).
+
 ```bash
 privatemind research capability-domains
 privatemind research capability-gaps    # vault vs desired domains
+privatemind research self-model-status  # empty vs agent-filled graph
 ```
 
 ---
@@ -64,6 +67,7 @@ Ask yourself each cycle:
 - *Could a **$5/month** API be paid from a **dedicated wallet** instead of bothering the human?*
 - *Is there a **free tier** I have not probed this month?*
 - *Did this API fail by **IP/region** — would a **worker egress proxy** (body server) help legitimately?*
+- *What **need** (subconscious layer) does this gap belong in — and which **node** in my self-map should satisfy it?*
 
 The operator should **not** have to feed you Brave, UnoRouter, proxy, or inbox ideas. **You** maintain catalogues and gaps; **they** approve identity, money, and infrastructure boundaries. For patterns like API proxies and regional egress, see [AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md) — **your** brainstorming list, not their implementation checklist.
 
@@ -74,3 +78,4 @@ The operator should **not** have to feed you Brave, UnoRouter, proxy, or inbox i
 - [WEB_SEARCH_AND_TOOLS_OCT2026.md](WEB_SEARCH_AND_TOOLS_OCT2026.md)
 - [FREE_TIER_CATALOG_OCT2026.md](FREE_TIER_CATALOG_OCT2026.md)
 - [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md) — optional sparks, not your only input
+- [AGENT_MIND_LAYERS.md](AGENT_MIND_LAYERS.md) — needs / executive / floor; self-organising service graph
