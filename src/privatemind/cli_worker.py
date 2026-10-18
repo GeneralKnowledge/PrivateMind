@@ -84,8 +84,19 @@ def worker_pair(
 @click.argument("worker_fingerprint")
 @click.option("--operation", "operations", multiple=True, required=True)
 @click.option("--lease-id", default=None)
+@click.option("--max-jobs", type=int, default=None, help="Cap jobs charged against this lease (M5)")
+@click.option("--expires-at", default=None, help="ISO8601 UTC expiry")
+@click.option("--contributor-id", default=None, help="Scope lease to a registered contributor")
 @click.option("--data-dir", type=click.Path(path_type=Path), default=None)
-def worker_lease(worker_fingerprint: str, operations: tuple[str, ...], lease_id: str | None, data_dir: Path | None) -> None:
+def worker_lease(
+    worker_fingerprint: str,
+    operations: tuple[str, ...],
+    lease_id: str | None,
+    max_jobs: int | None,
+    expires_at: str | None,
+    contributor_id: str | None,
+    data_dir: Path | None,
+) -> None:
     import uuid
 
     settings = _settings(data_dir)
@@ -93,8 +104,84 @@ def worker_lease(worker_fingerprint: str, operations: tuple[str, ...], lease_id:
     db.initialize()
     store = PairingStore(db)
     lid = lease_id or str(uuid.uuid4())
-    store.create_lease(lease_id=lid, worker_fingerprint=worker_fingerprint, operations=list(operations))
-    click.echo(json.dumps({"lease_id": lid, "operations": list(operations)}))
+    limits = {"max_jobs": max_jobs} if max_jobs is not None else {}
+    try:
+        store.create_lease(
+            lease_id=lid,
+            worker_fingerprint=worker_fingerprint,
+            operations=list(operations),
+            limits=limits,
+            expires_at=expires_at,
+            contributor_id=contributor_id,
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(
+        json.dumps(
+            {
+                "lease_id": lid,
+                "operations": list(operations),
+                "limits": limits,
+                "expires_at": expires_at,
+                "contributor_id": contributor_id,
+            }
+        )
+    )
+
+
+@worker_group.group("contributor")
+def worker_contributor_group() -> None:
+    """Register contributors and assign workers (M5)."""
+
+
+@worker_contributor_group.command("add")
+@click.option("--name", "display_name", required=True)
+@click.option("--contact", default="")
+@click.option("--notes", default="")
+@click.option("--contributor-id", default=None)
+@click.option("--data-dir", type=click.Path(path_type=Path), default=None)
+def worker_contributor_add(
+    display_name: str,
+    contact: str,
+    notes: str,
+    contributor_id: str | None,
+    data_dir: Path | None,
+) -> None:
+    settings = _settings(data_dir)
+    db = Database(settings.db_path)
+    db.initialize()
+    store = PairingStore(db)
+    cid = store.add_contributor(
+        display_name=display_name,
+        contact=contact,
+        notes=notes,
+        contributor_id=contributor_id,
+    )
+    click.echo(json.dumps({"contributor_id": cid, "display_name": display_name}))
+
+
+@worker_contributor_group.command("list")
+@click.option("--data-dir", type=click.Path(path_type=Path), default=None)
+def worker_contributor_list(data_dir: Path | None) -> None:
+    settings = _settings(data_dir)
+    db = Database(settings.db_path)
+    db.initialize()
+    store = PairingStore(db)
+    click.echo(json.dumps({"contributors": store.list_contributors()}, indent=2))
+
+
+@worker_contributor_group.command("assign")
+@click.argument("worker_fingerprint")
+@click.option("--contributor-id", required=True)
+@click.option("--data-dir", type=click.Path(path_type=Path), default=None)
+def worker_contributor_assign(worker_fingerprint: str, contributor_id: str, data_dir: Path | None) -> None:
+    settings = _settings(data_dir)
+    db = Database(settings.db_path)
+    db.initialize()
+    store = PairingStore(db)
+    if not store.assign_worker_contributor(worker_fingerprint, contributor_id):
+        raise click.ClickException("Worker or contributor not found")
+    click.echo(json.dumps({"worker": worker_fingerprint, "contributor_id": contributor_id}))
 
 
 @worker_group.group("trust")
@@ -244,20 +331,38 @@ def worker_serve(
     )
 
 
-@worker_group.command("demo")
-@click.option("--text", default="privatemind-worker-m3")
+@worker_group.command("schedule")
+@click.option("--text", default="privatemind-worker-m5")
+@click.option("--contributor-id", default=None)
 @click.option("--data-dir", type=click.Path(path_type=Path), default=None)
-def worker_demo(text: str, data_dir: Path | None) -> None:
-    """Delegate one compute_sha256 job to a paired local worker."""
-    from privatemind.audit.log import AuditLog
+def worker_schedule(text: str, contributor_id: str | None, data_dir: Path | None) -> None:
+    """Delegate compute_sha256 to the next schedulable worker (round-robin)."""
     from privatemind.core.agent import PrivateMindCore
 
     core = PrivateMindCore(settings=_settings(data_dir))
     if not core.worker_hub:
         raise click.ClickException("Core identity missing: privatemind node init")
-    workers = core.pairing.list_workers()
-    if not workers:
-        raise click.ClickException("No paired workers")
-    fp = workers[0]["fingerprint"]
-    out = core.worker_hub.delegate_compute_sha256(text, worker_fingerprint=fp)
+    out = core.worker_hub.delegate_scheduled_compute_sha256(text, contributor_id=contributor_id)
+    click.echo(json.dumps(out, indent=2))
+
+
+@worker_group.command("demo")
+@click.option("--text", default="privatemind-worker-m3")
+@click.option("--schedule/--no-schedule", default=False, help="Use M5 scheduler instead of first worker")
+@click.option("--data-dir", type=click.Path(path_type=Path), default=None)
+def worker_demo(text: str, schedule: bool, data_dir: Path | None) -> None:
+    """Delegate one compute_sha256 job to a paired local worker."""
+    from privatemind.core.agent import PrivateMindCore
+
+    core = PrivateMindCore(settings=_settings(data_dir))
+    if not core.worker_hub:
+        raise click.ClickException("Core identity missing: privatemind node init")
+    if schedule:
+        out = core.worker_hub.delegate_scheduled_compute_sha256(text)
+    else:
+        workers = core.pairing.list_workers()
+        if not workers:
+            raise click.ClickException("No paired workers")
+        fp = workers[0]["fingerprint"]
+        out = core.worker_hub.delegate_compute_sha256(text, worker_fingerprint=fp)
     click.echo(json.dumps(out, indent=2))

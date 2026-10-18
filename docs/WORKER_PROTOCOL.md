@@ -81,6 +81,15 @@ Implemented on **localhost**:
 
 `restricted` workers may receive jobs; the core verifies correctness but never **accepts** results until restored to `paired`.
 
+**M5 scheduling and leases (implemented):**
+
+| Feature | Status |
+|---------|--------|
+| `max_jobs` lease cap | enforced; `jobs_used` incremented per completed transport |
+| `expires_at` | ISO8601 UTC |
+| Contributor registry | `privatemind worker contributor add|list|assign` |
+| Scheduler | `privatemind worker schedule` / `delegate_scheduled_compute_sha256` (round-robin) |
+
 Not yet: production CA integration, worker advertisements, Sybil resistance at scale, general proof systems.
 
 ### Quick demo

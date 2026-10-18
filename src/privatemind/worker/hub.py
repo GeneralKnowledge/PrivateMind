@@ -12,6 +12,7 @@ from privatemind.worker.pairing_store import PairingStore
 from privatemind.worker.mtls import MtlsPaths, build_client_ssl_context
 from privatemind.worker.transport import WorkerTransportError, send_message
 import ssl
+from privatemind.worker.scheduler import WorkerScheduler
 from privatemind.worker.trust import auto_accept_results, can_delegate
 from privatemind.worker.verifier import build_verification_record, input_hash, record_to_dict
 
@@ -76,9 +77,11 @@ class WorkerHub:
 
         lease = self.pairing.active_lease(worker_fingerprint, operation)
         if not lease:
-            return {"ok": False, "error": "no active lease for operation"}
+            reason = self.pairing.lease_delegation_error(worker_fingerprint, operation)
+            return {"ok": False, "error": reason or "no active lease for operation"}
 
         job_id = str(uuid.uuid4())
+        lease_id = str(lease["lease_id"])
         ih = input_hash(body)
         package = JobPackage(
             job_id=job_id,
@@ -113,6 +116,8 @@ class WorkerHub:
         except WorkerTransportError as exc:
             self.audit.record("worker_delegate_failed", job_id=job_id, error=str(exc))
             return {"ok": False, "error": str(exc), "job_id": job_id}
+
+        self.pairing.consume_lease_job(lease_id)
 
         response = WireMessage.from_dict(raw)
         if not self.pairing.record_replay(response.msg_id):
@@ -173,6 +178,25 @@ class WorkerHub:
         return {
             "ok": verification.accepted,
             "job_id": job_id,
+            "lease_id": lease_id,
             "result": result,
             "verification": record_to_dict(verification),
         }
+
+    def delegate_scheduled_compute_sha256(
+        self,
+        text: str,
+        *,
+        contributor_id: str | None = None,
+        task_id: str | None = None,
+    ) -> dict[str, Any]:
+        scheduler = WorkerScheduler(self.pairing)
+        worker = scheduler.select_worker("compute_sha256", contributor_id=contributor_id)
+        if not worker:
+            return {"ok": False, "error": "no schedulable worker for operation"}
+        fp = str(worker["fingerprint"])
+        out = self.delegate_compute_sha256(text, worker_fingerprint=fp, task_id=task_id)
+        out["worker_fingerprint"] = fp
+        if contributor_id:
+            out["contributor_id"] = contributor_id
+        return out
