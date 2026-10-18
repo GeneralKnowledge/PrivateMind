@@ -9,6 +9,7 @@
 | Account types | LLM, GitHub SSH, SSH host via CLI |
 | SSH/git CLI preference | Wake probes `ssh -T git@host` and optional `git ls-remote` |
 | Wake / readiness | `privatemind wake`, `setup-check`, lifecycle memory |
+| Git self-improvement (M2) | SSH git tools, workspaces, `improve clone/start`, tests |
 
 ## Demonstrated (Milestone 1 core)
 

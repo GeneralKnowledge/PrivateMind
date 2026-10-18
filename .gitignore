@@ -11,3 +11,4 @@ dist/
 credentials.vault
 credentials.vault.meta
 runtime/
+workspaces/

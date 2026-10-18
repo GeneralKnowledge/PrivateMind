@@ -125,7 +125,26 @@ privatemind status
 
 ---
 
-## 6. Day-two operations
+## 6. Self-improvement (git + SSH only)
+
+After wake, use the agent GitHub identity for all repository work (no PAT HTTP API):
+
+```bash
+privatemind improve clone \
+  --repo-ssh-url git@github.com:YOUR_ORG/PrivateMind.git \
+  --workspace privatemind
+
+privatemind improve start \
+  --repo-ssh-url git@github.com:YOUR_ORG/PrivateMind.git \
+  --workspace privatemind \
+  --branch cursor/self-improve
+```
+
+Executive tools: `git_clone`, `git_branch`, `git_commit`, `git_push`, `run_tests`, `record_limitation`. See [docs/SELF_IMPROVEMENT.md](docs/SELF_IMPROVEMENT.md).
+
+---
+
+## 7. Day-two operations
 
 | Command | Purpose |
 |---------|---------|

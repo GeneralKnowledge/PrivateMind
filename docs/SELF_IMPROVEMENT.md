@@ -1,33 +1,52 @@
-# Self-Improvement Workflow (planned — Milestone 2)
+# Self-Improvement Workflow (Milestone 2)
 
 ## Objective
 
-Enable the agent to inspect an authorized repository, track limitations with evidence, implement fixes in an isolated workspace, run tests, and open a pull request for human review.
+Inspect an authorized repository over **git+SSH**, track limitations with evidence, implement changes in an isolated workspace, run tests, and **push a branch** for human review (no auto-merge).
 
-## v0.1 foundation already in place
+## Prerequisites
 
-- Persistent limitation-friendly memory (`kind=limitation` convention documented here)
-- Audit log for security-relevant events
-- Executive suitable for long-running improvement tasks
-- Capability registry extensible for `tool.git` operations
+- Agent is **alive** (`privatemind wake`) with GitHub account **`agent-github`** in the vault
+- Repository URL must be **`git@github.com:...`** (SSH only — no PAT/HTTP API for routine git)
 
-## Workflow (target M2)
+## Operator commands
 
-1. **Discover** — Read architecture docs, issues, test output; add/update limitation records with severity and evidence.
-2. **Propose** — Structured improvement proposal stored in memory and optionally as a GitHub issue draft.
-3. **Implement** — Branch in isolated worktree; minimum permissions.
-4. **Verify** — Run pytest/linters; capture baseline vs outcome metrics.
-5. **Submit** — Open PR; never auto-merge security-sensitive changes.
-6. **Evaluate** — Record success/failure; revert on regression.
+```bash
+# Clone into ~/.privatemind/workspaces/<name>
+privatemind improve clone \
+  --repo-ssh-url git@github.com:YOUR_ORG/PrivateMind.git \
+  --workspace privatemind
+
+# Enqueue self-improvement executive task
+privatemind improve start \
+  --repo-ssh-url git@github.com:YOUR_ORG/PrivateMind.git \
+  --workspace privatemind \
+  --branch cursor/self-improve \
+  --run
+```
+
+## Allowlisted git tools (executive)
+
+| Tool | Purpose |
+|------|---------|
+| `git_clone` | Clone via SSH using vault key |
+| `git_status` | Short status |
+| `git_branch` | Create/checkout branch |
+| `git_diff` | Working tree or staged diff |
+| `git_commit` | Stage paths (optional) and commit |
+| `git_push` | Push via SSH (`agent-github` default) |
+| `run_tests` | Default `python3 -m pytest -q` in workspace |
+| `record_limitation` | Persist structured limitation in memory |
+
+All git network operations use **`GIT_SSH_COMMAND`** with the vault private key — same path as `privatemind wake` health checks.
 
 ## Safeguards
 
-- Repository content is **untrusted data**; policies live in trusted config/docs.
-- Changes affecting verification, auditing, or approval requirements require human review.
-- The agent cannot approve its own privilege expansion.
+- Workspaces confined under `~/.privatemind/workspaces/`
+- Repository file content is **untrusted**; policies live in trusted docs/config
+- **Push does not merge** — human review on GitHub remains required
+- Security-boundary changes require explicit human approval (future: blocked paths in commit tool)
 
-## Next implementation tasks
+## Evaluation
 
-- `ImprovementTracker` memory helpers and CLI
-- Scoped GitHub/git tool with read-only default
-- Sample end-to-end improvement task in integration tests
+Record outcomes with `ImprovementTracker.record_outcome` (API) or memory kind `improvement_outcome` after tests pass/fail.

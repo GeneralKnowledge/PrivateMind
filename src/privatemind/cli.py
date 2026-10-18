@@ -170,6 +170,61 @@ def help_answer_cmd(ctx: click.Context, request_id: str, response: str) -> None:
     click.echo(json.dumps({"request_id": request_id, "answered": ok}))
 
 
+@main.group()
+@click.pass_context
+def improve(ctx: click.Context) -> None:
+    """Self-improvement workspace and git-over-SSH tools."""
+
+
+@improve.command("start")
+@click.option("--repo-ssh-url", required=True, help="git@github.com:org/repo.git")
+@click.option("--workspace", required=True, help="Name under ~/.privatemind/workspaces/")
+@click.option("--branch", default="cursor/self-improve", show_default=True)
+@click.option("--run", is_flag=True, help="Run executive after enqueue")
+@click.pass_context
+def improve_start_cmd(
+    ctx: click.Context,
+    repo_ssh_url: str,
+    workspace: str,
+    branch: str,
+    run: bool,
+) -> None:
+    core = _core(ctx.obj["data_dir"])
+    if not core.vault.is_unlocked():
+        core.unlock_vault(resolve_passphrase(None))
+    task = core.start_improvement(repo_ssh_url=repo_ssh_url, workspace=workspace, branch=branch)
+    click.echo(json.dumps({"task_id": task.id, "title": task.title, "state": task.state.value}))
+    if run:
+        click.echo(json.dumps(core.run_until_idle(), indent=2))
+
+
+@improve.command("clone")
+@click.option("--repo-ssh-url", required=True)
+@click.option("--workspace", required=True)
+@click.option("--github-account", default="agent-github", show_default=True)
+@click.pass_context
+def improve_clone_cmd(ctx: click.Context, repo_ssh_url: str, workspace: str, github_account: str) -> None:
+    core = _core(ctx.obj["data_dir"])
+    if not core.vault.is_unlocked():
+        core.unlock_vault(resolve_passphrase(None))
+    result = core.tools.invoke(
+        "git_clone",
+        {
+            "repo_ssh_url": repo_ssh_url,
+            "workspace": workspace,
+            "github_account": github_account,
+        },
+    )
+    click.echo(json.dumps({"ok": result.ok, "output": result.output, "detail": result.detail}, indent=2))
+
+
+@main.command("workspaces")
+@click.pass_context
+def workspaces_cmd(ctx: click.Context) -> None:
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    click.echo(json.dumps({"workspaces": core.workspaces.list_workspaces()}, indent=2))
+
+
 @main.command("capabilities")
 @click.pass_context
 def capabilities_cmd(ctx: click.Context) -> None:
