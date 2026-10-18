@@ -7,7 +7,7 @@ This document covers v0.1 (local trusted core) and stated assumptions for upcomi
 ## Assets to protect
 
 1. **Private runtime state** — SQLite database under `~/.privatemind` (tasks, memory, audit).
-2. **Credentials** — API keys via environment variables, never written to memory by untrusted paths.
+2. **Credentials** — API keys and SSH private keys in encrypted `credentials.vault`; env vars are legacy fallback only.
 3. **Executive integrity** — task states, retry policy, human-gating decisions.
 4. **Trust policies** — tool allowlists, future worker authorization (not yet enforced over network).
 

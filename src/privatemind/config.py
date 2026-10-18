@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     data_dir: Path = Path.home() / ".privatemind"
     db_name: str = "mind.sqlite3"
+    runtime_dir_name: str = "runtime"
 
     # Optional OpenAI-compatible inference
     llm_base_url: str | None = None
@@ -24,6 +25,10 @@ class Settings(BaseSettings):
     @property
     def db_path(self) -> Path:
         return self.data_dir / self.db_name
+
+    @property
+    def runtime_dir(self) -> Path:
+        return self.data_dir / self.runtime_dir_name
 
 
 def get_settings() -> Settings:

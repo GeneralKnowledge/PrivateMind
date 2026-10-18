@@ -17,6 +17,9 @@ PrivateMind is a single-process **trusted core** that owns persistent state, tas
 │  │ Tool executor│  │ Audit log    │  │ Human assistance    │ │
 │  │ (allowlist)  │  │              │  │ queue               │ │
 │  └─────────────┘  └──────────────┘  └─────────────────────┘ │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │ Credential vault (encrypted accounts — not in memory DB) │ │
+│  └─────────────────────────────────────────────────────────┘ │
 └───────────────────────────┬─────────────────────────────────┘
                             │ planned (M3+)
                     ┌───────▼────────┐
