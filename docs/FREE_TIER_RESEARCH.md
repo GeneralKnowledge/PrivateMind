@@ -130,9 +130,27 @@ privatemind research quota-diff /path/to/your/quota_state.json
 privatemind research seed-catalog
 ```
 
-Provider ids in the catalog today: `aion_labs`, `cohere`, `google_gemini`, `mistral`, `z_ai`, `cloudflare_workers_ai`, `groq`, `huggingface`, `kilo`, `llm7`, `modelscope`, `nvidia_nim`, `ollama_cloud`, `openrouter`, `ovhcloud_ai_endpoints`, `siliconflow`.
+Provider ids in the catalog today include `sambanova_cloud`, `unorouter`, plus the router set documented in [free_tier_provider_catalog.json](data/free_tier_provider_catalog.json).
 
 When your router adds a new key, append metadata to the catalog and a row in [FREE_TIER_CANDIDATES.md](FREE_TIER_CANDIDATES.md), then re-run `quota-diff`.
+
+### GitHub as the living source of lists
+
+Static docs go stale; **GitHub READMEs** are where the community updates free-provider inventories. PrivateMind ships a curated source list and a scanner:
+
+| File | Role |
+|------|------|
+| [data/free_tier_github_sources.json](data/free_tier_github_sources.json) | Repos/paths to fetch (`cheahjs/free-llm-api-resources`, `mnfst/awesome-free-llm-apis`, `open-free-llm-api/awesome-freellm-apis`, `xyzs996/free-llm-api`, `bradAGI/awesome-free-inference`, `unorouter/unorouter`) |
+
+```bash
+privatemind research github-sources          # show raw URLs
+privatemind research github-sync             # fetch READMEs, map mentions → catalog ids
+privatemind research github-sync --source-id cheahjs-free-llm
+```
+
+**Workflow for the agent:** run `github-sync` periodically → anything in `in_github_lists_not_in_catalog` becomes a research task (probe, then `research candidate` or extend the catalog). Do **not** auto-merge third-party lists into the trusted core; treat them as **hints** verified against official docs.
+
+**SambaNova Cloud** and **UnoRouter** are called out because community lists and operator reports still show them working (Oct 2026); limits and card rules change — probe before relying.
 
 ---
 
@@ -248,6 +266,8 @@ When adding integrations, prefer **approved tools + sandbox** and document spend
 | **ModelScope API-Inference** | $0 for registered dev | Magicube / daily rules ([intro](https://www.modelscope.cn/docs/model-service/API-Inference/intro)) | Often needs Alibaba Cloud link; non-production |
 | **SiliconFlow (free models)** | $0 | Fixed RPM/TPM per model ([docs](https://docs.siliconflow.com/en/userguide/rate-limits/rate-limit-and-upgradation)) | Strong CN-hosted open models |
 | **OVH AI Endpoints** | Anonymous + key | 2 RPM/IP/model anonymous; 400 RPM with key ([caps](https://docs.ovhcloud.com/en/public-cloud/ai-machine-learning/ai-endpoints-capabilities/)) | EU sovereignty; OpenAI-compatible |
+| **SambaNova Cloud** | Docs: free w/o payment method | Per-model RPM/RPD ([rate limits](https://docs.sambanova.ai/docs/en/models/rate-limits)) | Fast RDU inference; card/402 behavior — verify live |
+| **UnoRouter** | `:free` models | ~1 req/min/model + upstream caps ([docs](https://unorouter.com/en/docs/platform/errors-and-rate-limits)) | Aggregator over ~50 free upstreams; rotate models on 429 |
 | **Cohere / Mistral / Z.AI / HF / Ollama Cloud** | Varies | Check console | Catalog + `seed-catalog`; probe before relying |
 | **Heuristic (built-in)** | $0 | Unlimited | Not general intelligence — good for tests |
 

@@ -1,0 +1,50 @@
+{
+  "schema_version": "2026-10-18",
+  "description": "Curated GitHub README/list sources for free LLM API recon. Fetched via raw.githubusercontent.com (public repos only).",
+  "sources": [
+    {
+      "id": "cheahjs-free-llm",
+      "repo": "cheahjs/free-llm-api-resources",
+      "path": "README.md",
+      "branch": "main",
+      "web_url": "https://github.com/cheahjs/free-llm-api-resources",
+      "skip_fetch": true,
+      "notes": "High-signal list (27k+ stars). Raw README may 404 from some networks; open web_url or run github-sync locally."
+    },
+    {
+      "id": "mnfst-awesome-free",
+      "repo": "mnfst/awesome-free-llm-apis",
+      "path": "README.md",
+      "branch": "main",
+      "notes": "Permanent free tiers with API key links."
+    },
+    {
+      "id": "open-freellm-awesome",
+      "repo": "open-free-llm-api/awesome-freellm-apis",
+      "path": "README.md",
+      "branch": "main",
+      "notes": "Structured directory; cross-check card requirements."
+    },
+    {
+      "id": "xyzs996-free-llm-api",
+      "repo": "xyzs996/free-llm-api",
+      "path": "README.md",
+      "branch": "main",
+      "notes": "Verified permanent tiers with official source links."
+    },
+    {
+      "id": "bradagi-awesome-inference",
+      "repo": "bradAGI/awesome-free-inference",
+      "path": "README.md",
+      "branch": "main",
+      "notes": "Wide provider comparison and code samples."
+    },
+    {
+      "id": "unorouter-org",
+      "repo": "unorouter/unorouter",
+      "path": "README.md",
+      "branch": "main",
+      "notes": "Aggregator OSS; documents :free model pool (verify default branch)."
+    }
+  ]
+}

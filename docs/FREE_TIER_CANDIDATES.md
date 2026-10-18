@@ -24,6 +24,10 @@ Living backlog of **under-advertised** services to probe and judge. The agent up
 | `openrouter-free` | llm | `:free` suffix models | pending |
 | `ovhcloud-ai-endpoints` | llm | **Anonymous** 2 RPM/IP — easy to miss | pending |
 | `siliconflow-free` | llm | Free model names without `Pro/` prefix | pending |
+| `sambanova-cloud` | llm | Listed on GitHub free-API repos; card rules disputed | pending — operator reports still working |
+| `unorouter-free` | llm | 130+ `:free` models; easy to miss vs direct upstream keys | pending — good spillover aggregator |
+
+**GitHub list recon:** `privatemind research github-sync` — see [FREE_TIER_RESEARCH.md](FREE_TIER_RESEARCH.md#github-as-the-living-source-of-lists).
 
 ## GPU / batch / host (non-router)
 
