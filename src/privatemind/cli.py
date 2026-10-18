@@ -3,15 +3,20 @@ from pathlib import Path
 
 import click
 
+from privatemind.cli_accounts import account_group, vault_group
 from privatemind.config import Settings
 from privatemind.core.agent import PrivateMindCore
+from privatemind.vault.passphrase import resolve_passphrase
 
 
-def _core(data_dir: Path | None) -> PrivateMindCore:
+def _core(data_dir: Path | None, *, unlock_vault: bool = True) -> PrivateMindCore:
     settings = Settings()
     if data_dir:
         settings = Settings(data_dir=data_dir)
-    return PrivateMindCore(settings=settings)
+    core = PrivateMindCore(settings=settings)
+    if unlock_vault:
+        core.ensure_vault_unlocked_from_env()
+    return core
 
 
 @click.group()
@@ -26,8 +31,50 @@ def main(ctx: click.Context, data_dir: Path | None) -> None:
 @click.pass_context
 def init_cmd(ctx: click.Context) -> None:
     """Initialize database and seed capabilities."""
-    core = _core(ctx.obj["data_dir"])
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
     click.echo(f"Initialized PrivateMind at {core.settings.db_path}")
+    if not core.vault.exists:
+        click.echo("Next: privatemind vault init — then add accounts (see README).")
+
+
+main.add_command(vault_group, name="vault")
+main.add_command(account_group, name="account")
+
+
+@main.command("setup-check")
+@click.option("--passphrase", default=None)
+@click.pass_context
+def setup_check_cmd(ctx: click.Context, passphrase: str | None) -> None:
+    """Report whether configured accounts are sufficient to wake the agent."""
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    if core.vault.exists:
+        try:
+            core.unlock_vault(resolve_passphrase(passphrase))
+        except Exception as exc:  # noqa: BLE001
+            click.echo(json.dumps({"error": str(exc), "hint": "Set PRIVATE_MIND_VAULT_PASSPHRASE"}))
+            return
+    click.echo(json.dumps(core.wake.check(), indent=2))
+
+
+@main.command("wake")
+@click.option("--passphrase", default=None)
+@click.option("--skip-health", is_flag=True, help="Skip git/ssh probes")
+@click.option("--run/--no-run", default=False, help="Run executive until idle after wake")
+@click.pass_context
+def wake_cmd(ctx: click.Context, passphrase: str | None, skip_health: bool, run: bool) -> None:
+    """Validate accounts and transition the agent from dormant to alive."""
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    if not core.vault.exists:
+        raise click.ClickException("Configure the vault first (see README): privatemind vault init")
+    core.unlock_vault(resolve_passphrase(passphrase))
+    from privatemind.models.factory import create_model
+
+    core.model = create_model(core.settings, core.vault)
+    outcome = core.wake.wake(run_health_checks=not skip_health)
+    click.echo(json.dumps(outcome, indent=2))
+    if run and outcome.get("activated"):
+        results = core.run_until_idle()
+        click.echo(json.dumps({"executive": results}, indent=2))
 
 
 @main.command("demo")

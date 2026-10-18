@@ -1,53 +1,152 @@
 # PrivateMind
 
-An open-source autonomous agent with a **private trusted core**: persistent executive, memory with provenance, capability registry, and controlled tools. Designed to grow toward secure distributed workers and measured self-improvement without exposing internal state.
+**Start here.** PrivateMind begins as this README: you install the software, create a dedicated encrypted vault, register the accounts you want the agent to use, then **wake** it. Until accounts are configured, the core stays dormant — no pretending to be alive without keys.
 
-## Quick start
+The trusted core keeps private state, tasks, and memory. API keys and SSH identities live in an internal **credential vault**, not in chat logs or the memory database.
 
-Requirements: Python 3.11+
+---
+
+## 0. What you are setting up
+
+Prepare **separate accounts** for the agent (recommended):
+
+| Account | Purpose |
+|---------|---------|
+| **LLM API** | Inference (OpenAI-compatible URL + key) |
+| **GitHub user** | Dedicated user with SSH deploy key / SSH key — **git CLI over SSH only** (no PAT in HTTP URLs) |
+| **Test server** | SSH host for experiments (optional but supported) |
+
+Give the agent only what it needs. Revoke by disabling or deleting an account in the vault.
+
+---
+
+## 1. Install
+
+Requirements: Python 3.11+, `git`, and `ssh` on your PATH.
 
 ```bash
-cd /path/to/PrivateMind
-python -m pip install -e ".[dev]"
+git clone https://github.com/GeneralKnowledge/PrivateMind.git
+cd PrivateMind
+python3 -m pip install -e ".[dev]"
 privatemind init
-privatemind demo --run
-privatemind status
-privatemind memory-search --kind fact
 ```
 
-Data defaults to `~/.privatemind/mind.sqlite3`. Override with `--data-dir` or `PRIVATE_MIND_DATA_DIR`.
+Data directory (default): `~/.privatemind/`
 
-### Optional remote model
+---
 
-Set OpenAI-compatible inference:
+## 2. Create the credential vault
+
+Choose a strong passphrase. Non-interactive runs use the environment variable (do not commit this):
 
 ```bash
-export PRIVATE_MIND_LLM_BASE_URL="https://api.openai.com/v1"
-export PRIVATE_MIND_LLM_API_KEY="sk-..."
-export PRIVATE_MIND_LLM_MODEL="gpt-4o-mini"
+export PRIVATE_MIND_VAULT_PASSPHRASE='your-long-passphrase'
+privatemind vault init --passphrase "$PRIVATE_MIND_VAULT_PASSPHRASE"
+privatemind vault status
 ```
 
-Without these variables, a local **heuristic planner** runs the milestone demo offline.
+Details: [docs/CREDENTIALS.md](docs/CREDENTIALS.md)
 
-## CLI
+---
+
+## 3. Register accounts
+
+### LLM (required to wake)
+
+```bash
+privatemind account add-llm \
+  --name primary \
+  --base-url https://api.openai.com/v1 \
+  --model gpt-4o-mini \
+  --api-key "$YOUR_API_KEY"
+```
+
+### GitHub over SSH (required to wake)
+
+Create a **dedicated GitHub account** for the agent. Add an SSH public key, then store the **private** key in the vault:
+
+```bash
+privatemind account add-github \
+  --name agent-github \
+  --private-key-file ~/.ssh/agent_github_ed25519 \
+  --probe-repo-ssh-url git@github.com:YOUR_ORG/PrivateMind.git
+```
+
+Policy: **always prefer `git` and `ssh` CLI** for GitHub (clone, fetch, push, ls-remote). Avoid GitHub HTTP APIs and personal access tokens for routine work — they trigger automation friction and broaden credential scope.
+
+### Test server over SSH (optional)
+
+```bash
+privatemind account add-ssh-host \
+  --name test-server \
+  --host 203.0.113.10 \
+  --user agent \
+  --private-key-file ~/.ssh/agent_testserver_ed25519
+```
+
+List configured accounts (no secret values shown):
+
+```bash
+privatemind account list
+```
+
+---
+
+## 4. Check readiness
+
+```bash
+privatemind setup-check
+```
+
+You want `"level": "alive"` — vault unlocked, at least one LLM account and one GitHub SSH account enabled.
+
+---
+
+## 5. Wake the agent
+
+```bash
+privatemind wake
+```
+
+This will:
+
+1. Confirm readiness  
+2. Record primary account names in trusted memory  
+3. Probe `ssh -T git@github.com` (and optional `git ls-remote`) using the vault key  
+4. Optionally probe SSH hosts  
+5. Enqueue a short **post-wake bootstrap** task  
+
+Run the executive after wake:
+
+```bash
+privatemind wake --run
+privatemind status
+```
+
+---
+
+## 6. Day-two operations
 
 | Command | Purpose |
 |---------|---------|
-| `privatemind init` | Create database and seed capabilities |
-| `privatemind demo --run` | Milestone 1 end-to-end demo |
+| `privatemind tick --steps N` | Advance tasks |
 | `privatemind task "..."` | Enqueue work |
-| `privatemind tick --steps N` | Run executive steps |
-| `privatemind status` | Tasks, checkpoint, pending help requests |
-| `privatemind help-request "..."` / `help-answer ID TEXT` | Human assistance |
-| `privatemind capabilities` | List registered capabilities |
+| `privatemind status` | Tasks, checkpoint, human help queue |
+| `privatemind demo --run` | Offline milestone demo (no vault required) |
+| `privatemind capabilities` | Registered models/tools |
 
-## Architecture
+Legacy env vars (`PRIVATE_MIND_LLM_*`) still work if no LLM vault account is present; **vault accounts take precedence** when unlocked.
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — components and trust boundaries
-- [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) — adversaries and guarantees
-- [docs/SELF_IMPROVEMENT.md](docs/SELF_IMPROVEMENT.md) — planned M2 workflow
-- [docs/WORKER_PROTOCOL.md](docs/WORKER_PROTOCOL.md) — draft worker/lease protocol
-- [docs/STATUS.md](docs/STATUS.md) — what works today vs roadmap
+---
+
+## Architecture & security
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — trusted core vs future workers  
+- [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) — adversaries and guarantees  
+- [docs/SELF_IMPROVEMENT.md](docs/SELF_IMPROVEMENT.md) — repo/PR loop (next milestone)  
+- [docs/STATUS.md](docs/STATUS.md) — what is demonstrated today  
+
+---
 
 ## Development
 
@@ -55,15 +154,17 @@ Without these variables, a local **heuristic planner** runs the milestone demo o
 pytest
 ```
 
-## Roadmap milestones
+---
 
-1. **Persistent autonomous core** — implemented in v0.1
-2. Self-improvement loop (repo access, PRs)
-3. Secure worker communication
-4. Untrusted result verification
-5. User-contributed resources with revocable leases
-6. Adaptive resource management
-7. Gradual autonomy expansion with explicit threat models
+## Roadmap (short)
+
+1. Persistent core — **done**  
+2. Self-improvement via **git/ssh** on the agent GitHub account — **next**  
+3. Secure worker network  
+4. Adversarial result verification  
+5. Contributed resources with revocable leases  
+
+---
 
 ## License
 

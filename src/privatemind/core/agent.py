@@ -11,9 +11,11 @@ from privatemind.executive.manager import TaskManager
 from privatemind.executive.tasks import Task, TaskState
 from privatemind.memory.store import MemoryStore
 from privatemind.models.base import ModelBackend, ModelMessage
+from privatemind.activation.wake import WakeController
 from privatemind.models.factory import create_model
 from privatemind.tools.builtin import ToolExecutor
 from privatemind.trust import Provenance, TrustLevel
+from privatemind.vault.store import CredentialVault
 
 
 SYSTEM_PROMPT = """You are the planning component of PrivateMind's trusted core.
@@ -42,7 +44,30 @@ class PrivateMindCore:
         self.assistance = HumanAssistance(self.db)
         self.audit = AuditLog(self.db)
         self.tools = ToolExecutor(self.memory, self.assistance)
-        self.model: ModelBackend = create_model(self.settings)
+        self.vault = CredentialVault(self.settings.data_dir)
+        self.wake = WakeController(
+            vault=self.vault,
+            tasks=self.tasks,
+            memory=self.memory,
+            audit=self.audit,
+            runtime_dir=self.settings.runtime_dir,
+        )
+        self.model: ModelBackend = create_model(self.settings, self.vault)
+
+    def unlock_vault(self, passphrase: str) -> None:
+        self.vault.unlock(passphrase)
+        self.model = create_model(self.settings, self.vault)
+
+    def ensure_vault_unlocked_from_env(self) -> bool:
+        import os
+
+        phrase = os.environ.get("PRIVATE_MIND_VAULT_PASSPHRASE")
+        if not phrase or not self.vault.exists:
+            return False
+        if self.vault.is_unlocked():
+            return True
+        self.unlock_vault(phrase)
+        return True
 
     def bootstrap_demo(self) -> Task:
         """Idempotent demo goal for milestone 1."""
