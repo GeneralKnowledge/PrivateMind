@@ -398,12 +398,16 @@ def tool_request_list(ctx: click.Context) -> None:
     multiple=True,
     help="Subprocess argv for approved tool (receives JSON on stdin). Example: --runner-arg python3 --runner-arg -c --runner-arg script",
 )
+@click.option("--sandbox-memory-mb", type=int, default=None)
+@click.option("--sandbox-network/--no-sandbox-network", default=None)
 @click.pass_context
 def tool_request_approve(
     ctx: click.Context,
     request_id: str,
     capability_id: str | None,
     runner_argv: tuple[str, ...],
+    sandbox_memory_mb: int | None,
+    sandbox_network: bool | None,
 ) -> None:
     from privatemind.capabilities.registry import Capability
 
@@ -415,6 +419,10 @@ def tool_request_approve(
     limits: dict = {"granted_via": "tool_request", "request_id": request_id}
     if runner_argv:
         limits["runner_argv"] = list(runner_argv)
+    if sandbox_memory_mb is not None:
+        limits["sandbox_memory_mb"] = sandbox_memory_mb
+    if sandbox_network is not None:
+        limits["sandbox_network"] = sandbox_network
     core.capabilities.register(
         Capability(
             id=cap_id,

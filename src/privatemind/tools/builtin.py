@@ -10,7 +10,10 @@ from privatemind.executive.tasks import utc_now
 from privatemind.improvement.tracker import ImprovementTracker
 from privatemind.memory.store import MemoryStore
 from privatemind.capabilities.registry import CapabilityRegistry
+from pathlib import Path
+
 from privatemind.tools.approved_runner import ApprovedToolRunner
+from privatemind.tools.sandbox import SandboxProfile
 from privatemind.tools.requests import ToolRequestStore
 from privatemind.tools.types import ToolResult
 from privatemind.trust import Provenance, TrustLevel
@@ -41,6 +44,8 @@ class ToolExecutor:
         on_tool_approved=None,
         worker: "WorkerToolHandler | None" = None,
         capabilities: CapabilityRegistry | None = None,
+        runtime_dir: Path | None = None,
+        sandbox_defaults: SandboxProfile | None = None,
     ) -> None:
         self._memory = memory
         self._assistance = assistance
@@ -52,7 +57,8 @@ class ToolExecutor:
         self._on_tool_approved = on_tool_approved
         self._worker = worker
         self._capabilities = capabilities
-        self._approved_runner = ApprovedToolRunner()
+        rt = runtime_dir or Path.home() / ".privatemind" / "runtime"
+        self._approved_runner = ApprovedToolRunner(runtime_dir=rt, default_profile=sandbox_defaults)
         self._allowed = {
             "remember": self._remember,
             "recall": self._recall,

@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     worker_pki_dir_name: str = "mtls"
     worker_quarantine_failure_threshold: int = 3
     assistance_webhook_url: str | None = None
+    tool_sandbox_memory_mb: int = 256
+    tool_sandbox_timeout_seconds: int = 120
+    tool_sandbox_network: bool = False
 
     @property
     def db_path(self) -> Path:

@@ -44,7 +44,7 @@ def test_approved_tool_runner_executes(tmp_path: Path) -> None:
         trust={"operator_approved": True},
         enabled=True,
     )
-    runner = ApprovedToolRunner()
+    runner = ApprovedToolRunner(runtime_dir=tmp_path)
     out = runner.invoke(cap, "echo_json", {"hello": "world"})
     assert out.ok is True
     assert out.output.get("arguments", {}).get("hello") == "world"
