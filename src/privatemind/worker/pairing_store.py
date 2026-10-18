@@ -20,7 +20,10 @@ class PairingStore:
                     label TEXT NOT NULL DEFAULT '',
                     role TEXT NOT NULL DEFAULT 'worker',
                     trust_state TEXT NOT NULL DEFAULT 'paired',
-                    paired_at TEXT NOT NULL
+                    paired_at TEXT NOT NULL,
+                    endpoint_host TEXT,
+                    endpoint_port INTEGER,
+                    use_mtls INTEGER NOT NULL DEFAULT 0
                 );
                 CREATE TABLE IF NOT EXISTS worker_leases (
                     lease_id TEXT PRIMARY KEY,
@@ -37,20 +40,53 @@ class PairingStore:
                 );
                 """
             )
+            self._migrate_worker_peers(conn)
 
-    def pair_worker(self, *, fingerprint: str, public_key_b64: str, label: str = "") -> None:
+    def _migrate_worker_peers(self, conn) -> None:
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(worker_peers)")}
+        if "endpoint_host" not in cols:
+            conn.execute("ALTER TABLE worker_peers ADD COLUMN endpoint_host TEXT")
+        if "endpoint_port" not in cols:
+            conn.execute("ALTER TABLE worker_peers ADD COLUMN endpoint_port INTEGER")
+        if "use_mtls" not in cols:
+            conn.execute("ALTER TABLE worker_peers ADD COLUMN use_mtls INTEGER NOT NULL DEFAULT 0")
+
+    def pair_worker(
+        self,
+        *,
+        fingerprint: str,
+        public_key_b64: str,
+        label: str = "",
+        endpoint_host: str | None = None,
+        endpoint_port: int | None = None,
+        use_mtls: bool = False,
+    ) -> None:
         with self._db.session() as conn:
             conn.execute(
                 """
-                INSERT INTO worker_peers (fingerprint, public_key_b64, label, role, trust_state, paired_at)
-                VALUES (?, ?, ?, 'worker', 'paired', ?)
+                INSERT INTO worker_peers (
+                    fingerprint, public_key_b64, label, role, trust_state, paired_at,
+                    endpoint_host, endpoint_port, use_mtls
+                )
+                VALUES (?, ?, ?, 'worker', 'paired', ?, ?, ?, ?)
                 ON CONFLICT(fingerprint) DO UPDATE SET
                     public_key_b64 = excluded.public_key_b64,
                     label = excluded.label,
                     trust_state = 'paired',
-                    paired_at = excluded.paired_at
+                    paired_at = excluded.paired_at,
+                    endpoint_host = COALESCE(excluded.endpoint_host, worker_peers.endpoint_host),
+                    endpoint_port = COALESCE(excluded.endpoint_port, worker_peers.endpoint_port),
+                    use_mtls = excluded.use_mtls
                 """,
-                (fingerprint, public_key_b64, label, utc_now()),
+                (
+                    fingerprint,
+                    public_key_b64,
+                    label,
+                    utc_now(),
+                    endpoint_host,
+                    endpoint_port,
+                    1 if use_mtls else 0,
+                ),
             )
 
     def get_peer(self, fingerprint: str) -> dict[str, Any] | None:

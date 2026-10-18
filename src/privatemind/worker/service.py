@@ -1,6 +1,7 @@
 import hashlib
 import json
 import socketserver
+import ssl
 from typing import Any
 
 from privatemind.worker.envelope import WireMessage, new_message
@@ -67,6 +68,7 @@ def serve_worker(
     core_fingerprint: str,
     core_public_key_b64: str,
     allowed_ops: list[str] | None = None,
+    ssl_context: ssl.SSLContext | None = None,
 ) -> None:
     ops = allowed_ops or ["compute_sha256"]
 
@@ -80,6 +82,16 @@ def serve_worker(
 
     class Server(socketserver.ThreadingTCPServer):
         allow_reuse_address = True
+
+        def __init__(self, server_address, RequestHandlerClass, bind_and_activate=True):
+            self._ssl_context = ssl_context
+            super().__init__(server_address, RequestHandlerClass, bind_and_activate)
+
+        def get_request(self):
+            client_socket, client_addr = self.socket.accept()
+            if self._ssl_context is not None:
+                client_socket = self._ssl_context.wrap_socket(client_socket, server_side=True)
+            return client_socket, client_addr
 
     with Server((host, port), BoundHandler) as server:
         server.serve_forever()

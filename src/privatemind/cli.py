@@ -63,6 +63,23 @@ def node_init(ctx: click.Context) -> None:
     click.echo(json.dumps({"fingerprint": ident.fingerprint, "public_key_b64": ident.public_key_b64}, indent=2))
 
 
+@node.command("export-trust")
+@click.option("--output", type=click.Path(path_type=Path), required=True)
+@click.pass_context
+def node_export_trust(ctx: click.Context, output: Path) -> None:
+    """Export core Ed25519 public material for worker VMs (no private key)."""
+    from privatemind.worker.identity import NodeIdentity
+    from privatemind.worker.trusted_core import TrustedCore
+
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    path = core.settings.data_dir / "core_identity.json"
+    if not path.is_file():
+        raise click.ClickException("Run: privatemind node init")
+    ident = NodeIdentity.load(path)
+    TrustedCore(fingerprint=ident.fingerprint, public_key_b64=ident.public_key_b64).save(output)
+    click.echo(json.dumps({"exported": str(output), "fingerprint": ident.fingerprint}, indent=2))
+
+
 @main.command("setup-check")
 @click.option("--passphrase", default=None)
 @click.pass_context

@@ -1,5 +1,6 @@
 import json
 import socket
+import ssl
 from typing import Any
 
 
@@ -7,18 +8,37 @@ class WorkerTransportError(Exception):
     pass
 
 
-def send_message(host: str, port: int, message: dict[str, Any], *, timeout: float = 30.0) -> dict[str, Any]:
+def send_message(
+    host: str,
+    port: int,
+    message: dict[str, Any],
+    *,
+    timeout: float = 30.0,
+    ssl_context: ssl.SSLContext | None = None,
+) -> dict[str, Any]:
     line = (json.dumps(message) + "\n").encode("utf-8")
     try:
-        with socket.create_connection((host, port), timeout=timeout) as sock:
+        if ssl_context is not None:
+            sock = ssl_context.wrap_socket(socket.socket(), server_hostname=host)
+            sock.settimeout(timeout)
+            sock.connect((host, port))
+        else:
+            sock = socket.create_connection((host, port), timeout=timeout)
+        try:
             sock.sendall(line)
-            sock.shutdown(socket.SHUT_WR)
-            chunks: list[bytes] = []
-            while True:
-                part = sock.recv(65536)
-                if not part:
+            buffer = b""
+            while b"\n" not in buffer:
+                chunk = sock.read(4096) if isinstance(sock, ssl.SSLSocket) else sock.recv(4096)
+                if not chunk:
                     break
-                chunks.append(part)
+                buffer += chunk
+            if isinstance(sock, ssl.SSLSocket):
+                sock.shutdown(socket.SHUT_RDWR)
+            else:
+                sock.shutdown(socket.SHUT_WR)
+            chunks = [buffer.split(b"\n", 1)[0] + b"\n"] if buffer else []
+        finally:
+            sock.close()
     except OSError as exc:
         raise WorkerTransportError(str(exc)) from exc
     if not chunks:

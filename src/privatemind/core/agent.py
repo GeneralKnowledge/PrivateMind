@@ -28,6 +28,7 @@ from privatemind.trust import Provenance, TrustLevel
 from privatemind.vault.store import CredentialVault
 from privatemind.worker.hub import WorkerHub
 from privatemind.worker.identity import NodeIdentity
+from privatemind.worker.mtls import core_client_paths, pki_ready
 from privatemind.worker.pairing_store import PairingStore
 
 
@@ -75,6 +76,7 @@ class PrivateMindCore:
         self.worker_hub: WorkerHub | None = None
         if core_identity_path.is_file():
             self.core_identity = NodeIdentity.load(core_identity_path)
+            mtls = core_client_paths(self.settings.pki_dir) if pki_ready(self.settings.pki_dir) else None
             self.worker_hub = WorkerHub(
                 core_identity=self.core_identity,
                 pairing=self.pairing,
@@ -82,6 +84,8 @@ class PrivateMindCore:
                 audit=self.audit,
                 host=self.settings.worker_host,
                 port=self.settings.worker_port,
+                mtls_paths=mtls,
+                default_use_mtls=self.settings.worker_use_mtls and mtls is not None,
             )
 
         def _approve_tool_request(req_id: str, tool_name: str, purpose: str, justification: str) -> str | None:
