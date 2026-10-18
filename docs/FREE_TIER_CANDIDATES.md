@@ -32,6 +32,18 @@ Living backlog of **under-advertised** services to probe and judge. The agent up
 
 **GitHub list recon:** `privatemind research github-sync` — see [FREE_TIER_RESEARCH.md](FREE_TIER_RESEARCH.md#github-as-the-living-source-of-lists).
 
+## Search / grounding (non-LLM)
+
+| Slug | Category | Why it’s hidden | Initial verdict |
+|------|----------|-----------------|-----------------|
+| `brave-search-serp` | search | $5/mo credit ≈ 1k queries; separate Answers plan | pending — `probe-brave-search` |
+| `brave-answers` | search | Instant answers vs raw SERP | pending |
+| `openserp-self-host` | search | MIT multi-engine SERP on localhost | pending — worker deploy |
+| `tavily-agent-search` | search | Agent-oriented JSON search | pending |
+| `freeserp-keyless` | search | Keyless SERP claims | pending — ToS probe |
+
+See [WEB_SEARCH_AND_TOOLS_OCT2026.md](WEB_SEARCH_AND_TOOLS_OCT2026.md).
+
 ## GPU / batch / host (non-router)
 
 | Slug | Category | Why it’s hidden | Initial verdict |

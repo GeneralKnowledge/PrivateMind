@@ -411,10 +411,59 @@ def research_probe_nim(ctx: click.Context, api_key_env: str) -> None:
     click.echo(json.dumps(result, indent=2))
 
 
+@research.command("probe-brave-search")
+@click.option("--api-key-env", default="BRAVE_SEARCH_API_KEY", show_default=True)
+@click.option("--query", default="PrivateMind")
+@click.pass_context
+def research_probe_brave_search(ctx: click.Context, api_key_env: str, query: str) -> None:
+    """Probe Brave Search API web endpoint (SERP)."""
+    import os
+
+    from privatemind.research.probe import probe_brave_web_search
+
+    key = os.environ.get(api_key_env)
+    if not key:
+        raise click.ClickException(f"Set {api_key_env}")
+    click.echo(json.dumps(probe_brave_web_search(api_key=key, query=query), indent=2))
+
+
+@research.command("tool-entitlements")
+@click.option("--class", "eligibility_class", default=None, type=click.Choice(["A", "B", "C"]))
+@click.option("--tool-kind", default=None, type=click.Choice(["serp", "instant_answer", "serp_agent", "neural_search", "knowledge_lookup"]))
+@click.option("--provider-id", default=None)
+@click.pass_context
+def research_tool_entitlements(
+    ctx: click.Context,
+    eligibility_class: str | None,
+    tool_kind: str | None,
+    provider_id: str | None,
+) -> None:
+    """List web search / grounding tool rows (non-LLM catalogue)."""
+    from privatemind.research.tool_entitlements import list_tool_entries, load_tool_entitlements
+
+    data = load_tool_entitlements()
+    rows = list_tool_entries(
+        data,
+        eligibility_class=eligibility_class,
+        tool_kind=tool_kind,
+        provider_id=provider_id,
+    )
+    click.echo(
+        json.dumps(
+            {
+                "schema_version": data.get("schema_version"),
+                "count": len(rows),
+                "entries": rows,
+            },
+            indent=2,
+        )
+    )
+
+
 @research.command("candidate")
 @click.argument("slug")
 @click.option("--name", required=True)
-@click.option("--category", required=True, help="llm | gpu/batch | host | webhook | other")
+@click.option("--category", required=True, help="llm | search | gpu/batch | host | webhook | other")
 @click.option("--docs-url", default="")
 @click.option("--notes", default="")
 @click.option(

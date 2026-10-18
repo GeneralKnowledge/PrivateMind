@@ -315,15 +315,22 @@ Keep webhook payloads **redacted** — the core should not exfiltrate vault mate
 
 ---
 
-## Search & tools (if the agent requests them later)
+## Search & grounding (think beyond LLMs)
 
-| Service | Free slice | Agent note |
-|---------|------------|------------|
-| Brave Search API | Limited free queries/month | Store key in vault; wrap via approved tool runner |
-| Tavily / similar | Trial credits | Treat as consumable; record limitations |
-| Hugging Face Inference | Free tier with rate limits | Good for narrow models; verify ToS for automation |
+Full catalogue: **[WEB_SEARCH_AND_TOOLS_OCT2026.md](WEB_SEARCH_AND_TOOLS_OCT2026.md)** and [`data/free_tier_tool_entitlements.json`](data/free_tier_tool_entitlements.json).
 
-Prefer **approved tool + sandbox** (`tool-request approve --runner-arg`) over baking vendor SDKs into the trusted core.
+| Service | Role | Class (Oct 2026) | Agent note |
+|---------|------|------------------|------------|
+| **Brave Search API** | SERP + LLM Context | B | ~$5/mo renewable credit; `research probe-brave-search` |
+| **Brave Answers** | Instant answers + citations | B | Separate plan from raw SERP |
+| **OpenSERP** (self-host) | Multi-engine SERP | A on your metal | Worker/body; engine ToS applies |
+| **Wikipedia API** | Fact summaries | A | User-Agent + polite RPM |
+| **Tavily / Exa** | Agent search JSON | B/C | Credits/trial — consumable |
+| **FreeSerp** | Keyless SERP (claims) | C | Probe ToS before automation |
+
+The agent should **propose** search tools when tasks need live web data — not wait for the operator to list every API. Log with `research candidate --category search`.
+
+Prefer **approved tool + sandbox** over baking vendor SDKs into the trusted core.
 
 ---
 

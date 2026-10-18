@@ -1,0 +1,236 @@
+{
+  "schema_version": "2026-10-18",
+  "catalog_title": "Web search & grounding APIs (non-LLM)",
+  "methodology": {
+    "note": "Same A/B/C rules as LLM entitlements. Search is not 'free forever' as often as docs imply — watch monthly credits vs true $0.",
+    "integration": "Approved tool + sandbox only; store keys in vault (BRAVE_SEARCH_API_KEY, etc.)."
+  },
+  "entries": [
+    {
+      "id": "brave-search-plan",
+      "provider": "Brave Search API (Search plan)",
+      "provider_id": "brave_search",
+      "tool_kind": "serp",
+      "eligibility_class": "B",
+      "endpoint": "https://api.search.brave.com/res/v1/web/search",
+      "free_tier_status": "monthly_credit_allowance",
+      "limits_official": {
+        "pricing": "$5 per 1,000 web search requests",
+        "monthly_free_credits_usd": 5,
+        "approx_free_queries": "~1,000 searches/month at $5 credit",
+        "qps": 50,
+        "source_url": "https://brave.com/search/api/"
+      },
+      "limits_enforced_conservative": {
+        "requests_per_day": 25,
+        "notes": "Stay under $5/mo; set dashboard spend cap = free credits."
+      },
+      "uk_availability": "assumed_ok",
+      "card_required": true,
+      "commercial_use": "attribution_required",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://api-dashboard.search.brave.com/documentation/resources/help-feedback"
+        }
+      ],
+      "verification_notes": "SERP + LLM Context for agents. Legacy '2,000 free/mo' plans may still exist for old signups."
+    },
+    {
+      "id": "brave-answers-plan",
+      "provider": "Brave Search API (Answers plan)",
+      "provider_id": "brave_answers",
+      "tool_kind": "instant_answer",
+      "eligibility_class": "B",
+      "endpoint": "https://api.search.brave.com/res/v1/answer (see current Answers docs)",
+      "free_tier_status": "monthly_credit_allowance",
+      "limits_official": {
+        "pricing": "$4 per 1,000 answer requests + token usage",
+        "monthly_free_credits_usd": 5,
+        "features": "Grounded answers, citations, streaming, OpenAI SDK compatible",
+        "source_url": "https://brave.com/blog/most-powerful-search-api-for-ai/"
+      },
+      "limits_enforced_conservative": {
+        "requests_per_day": 10,
+        "notes": "Instant answers for planner 'quick fact' steps — not a replacement for full SERP audit trail."
+      },
+      "uk_availability": "assumed_ok",
+      "card_required": true,
+      "commercial_use": "attribution_required",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://brave.com/search/api/"
+        }
+      ],
+      "verification_notes": "This is the 'instant answer' path the operator meant — probe with real key; confirm exact path in dashboard docs."
+    },
+    {
+      "id": "tavily-search",
+      "provider": "Tavily",
+      "provider_id": "tavily",
+      "tool_kind": "serp_agent",
+      "eligibility_class": "B",
+      "endpoint": "https://api.tavily.com/search",
+      "free_tier_status": "trial_or_monthly_credits",
+      "limits_official": {
+        "source_url": "https://docs.tavily.com/"
+      },
+      "limits_enforced_conservative": {
+        "requests_per_day": 20,
+        "notes": "Agent-oriented JSON; consumable credits."
+      },
+      "uk_availability": "assumed_ok",
+      "card_required": "varies",
+      "commercial_use": "verify_tos",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://docs.tavily.com/"
+        }
+      ],
+      "verification_notes": "Common in agent stacks; re-check free tier on signup."
+    },
+    {
+      "id": "exa-search",
+      "provider": "Exa (formerly Metaphor)",
+      "provider_id": "exa",
+      "tool_kind": "neural_search",
+      "eligibility_class": "C",
+      "endpoint": "https://api.exa.ai/search",
+      "free_tier_status": "trial_or_credits",
+      "limits_official": {
+        "source_url": "https://docs.exa.ai/"
+      },
+      "limits_enforced_conservative": {
+        "requests_per_day": 10
+      },
+      "uk_availability": "assumed_ok",
+      "card_required": "often",
+      "commercial_use": "verify_tos",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://docs.exa.ai/"
+        }
+      ],
+      "verification_notes": "Semantic/neural search — good for research agents when entitled."
+    },
+    {
+      "id": "openserp-self-host",
+      "provider": "OpenSERP (self-hosted)",
+      "provider_id": "openserp",
+      "tool_kind": "serp",
+      "eligibility_class": "A",
+      "endpoint": "http://127.0.0.1:7000/search",
+      "free_tier_status": "permanent_free_tier",
+      "limits_official": {
+        "engines": "google, bing, duckduckgo, yandex, baidu, ecosia",
+        "license": "MIT",
+        "source_url": "https://github.com/karust/openserp"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 10,
+        "notes": "Run on worker/body; respect engine ToS and robots; rate-limit locally."
+      },
+      "uk_availability": "self_hosted",
+      "card_required": false,
+      "commercial_use": "engine_tos_applies",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://openserp.org/"
+        }
+      ],
+      "verification_notes": "Out-of-the-box thinking: $0 SERP on your infra — operational cost + ToS risk, not API invoice."
+    },
+    {
+      "id": "wikipedia-api",
+      "provider": "Wikimedia REST / Action API",
+      "provider_id": "wikipedia",
+      "tool_kind": "knowledge_lookup",
+      "eligibility_class": "A",
+      "endpoint": "https://en.wikipedia.org/api/rest_v1/page/summary/{title}",
+      "free_tier_status": "permanent_free_tier",
+      "limits_official": {
+        "rate_limit": "reasonable use; User-Agent required",
+        "source_url": "https://www.mediawiki.org/wiki/API:Main_page"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 30
+      },
+      "uk_availability": "ok",
+      "card_required": false,
+      "commercial_use": "cc_license_on_content",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://www.mediawiki.org/wiki/API:Main_page"
+        }
+      ],
+      "verification_notes": "Not general web search — excellent free grounding for facts with citations."
+    },
+    {
+      "id": "freeserp-keyless",
+      "provider": "FreeSerp",
+      "provider_id": "freeserp",
+      "tool_kind": "serp",
+      "eligibility_class": "C",
+      "endpoint": "https://freeserp.ai/api.php",
+      "free_tier_status": "unverified",
+      "limits_official": {
+        "claims": "Keyless JSON SERP; own index",
+        "source_url": "https://freeserp.ai/"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 5,
+        "notes": "Probe automation ToS before production agent use."
+      },
+      "uk_availability": "unknown",
+      "card_required": false,
+      "commercial_use": "verify_tos",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "vendor_marketing",
+          "url": "https://freeserp.ai/"
+        }
+      ],
+      "verification_notes": "Discovery lead — verify stability and terms; do not assume Category A."
+    },
+    {
+      "id": "google-custom-search-json",
+      "provider": "Google Custom Search JSON API",
+      "provider_id": "google_cse",
+      "tool_kind": "serp",
+      "eligibility_class": "B",
+      "endpoint": "https://www.googleapis.com/customsearch/v1",
+      "free_tier_status": "legacy_sunset",
+      "limits_official": {
+        "status": "Closed to new customers; existing until 2027-01-01",
+        "free_queries_per_day": 100,
+        "source_url": "https://developers.google.com/custom-search/v1/overview"
+      },
+      "limits_enforced_conservative": {
+        "requests_per_day": 90
+      },
+      "uk_availability": "ok",
+      "card_required": true,
+      "commercial_use": "google_tos",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://developers.google.com/custom-search/v1/overview"
+        }
+      ],
+      "verification_notes": "Do not plan new stacks on CSE; prefer Brave/OpenSERP/existing index."
+    }
+  ]
+}
