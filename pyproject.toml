@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "privatemind"
-version = "0.17.0"
+version = "0.23.0"
 description = "Autonomous agent with a private trusted core, persistent executive, and extensible capabilities"
 readme = "README.md"
 requires-python = ">=3.11"

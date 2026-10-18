@@ -94,4 +94,4 @@ Donors **rotating their own API keys** is normal (quota, security); that is **no
 2. Propose topology in a design note or assistance request: *“Contributor X donates ARM box; operator loads Brave key there only; scheduler tag `provider=brave_search`; operator vault holds backup Brave key on body if X drops.”*
 3. Iterate — move keys between vault and donors as needed; document the live map in limitation/memory, not in code constants.
 
-See also [AGENT_CAPABILITY_MANDATE.md](AGENT_CAPABILITY_MANDATE.md), [DEDICATED_SERVER.md](DEDICATED_SERVER.md), [WORKER_PROTOCOL.md](WORKER_PROTOCOL.md), [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md).
+See also [AGENT_CAPABILITY_MANDATE.md](AGENT_CAPABILITY_MANDATE.md), [AGENT_MIND_LAYERS.md](AGENT_MIND_LAYERS.md) (self-map: when to use which worker/service), [DEDICATED_SERVER.md](DEDICATED_SERVER.md), [WORKER_PROTOCOL.md](WORKER_PROTOCOL.md), [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md).

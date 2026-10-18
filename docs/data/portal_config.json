@@ -1,0 +1,20 @@
+{
+  "schema_version": "2026-10-18",
+  "title": "Portal configuration skeleton",
+  "operator_note": "Optional overrides; defaults are safe localhost bind. Agent may propose updates in a draft PR.",
+  "defaults": {
+    "host": "127.0.0.1",
+    "port": 8780,
+    "public_base_url": null
+  },
+  "instruction_paths": {
+    "admin": "docs/FIRST_BOOT_ADMIN.md",
+    "donor": "docs/CONTRIBUTOR_GETTING_STARTED.md",
+    "helper": "docs/HELPER_GETTING_STARTED.md",
+    "donor-resources": "docs/DONOR_RESOURCE_TIERS.md"
+  },
+  "features": {
+    "donor_intent_api": true,
+    "expose_intents_on_lan": false
+  }
+}

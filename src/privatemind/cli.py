@@ -4,6 +4,9 @@ from pathlib import Path
 import click
 
 from privatemind.cli_accounts import account_group, vault_group
+from privatemind.cli_log import log_cmd
+from privatemind.cli_mode import mode_group
+from privatemind.cli_portal import portal_group
 from privatemind.cli_worker import worker_group
 from privatemind.config import Settings
 from privatemind.core.agent import PrivateMindCore
@@ -32,15 +35,26 @@ def main(ctx: click.Context, data_dir: Path | None) -> None:
 @click.pass_context
 def init_cmd(ctx: click.Context) -> None:
     """Initialize database and seed capabilities."""
+    from privatemind.operational.mode import default_mode_for_install, mode_state_path, write_mode_state
+
     core = _core(ctx.obj["data_dir"], unlock_vault=False)
     click.echo(f"Initialized PrivateMind at {core.settings.db_path}")
+    mode_path = mode_state_path(core.settings.data_dir)
+    if not mode_path.is_file():
+        dm = default_mode_for_install()
+        write_mode_state(core.settings.data_dir, mode=dm, notes="default after init")
+        click.echo(f"Operational mode: {dm} (see docs/OPERATIONAL_MODES.md)")
+    core.audit.record("system_init", data_dir=str(core.settings.data_dir))
     if not core.vault.exists:
-        click.echo("Next: privatemind vault init — then add accounts (see README).")
+        click.echo("Next: privatemind vault init — then see docs/FIRST_BOOT_ADMIN.md and README.")
 
 
 main.add_command(vault_group, name="vault")
 main.add_command(account_group, name="account")
 main.add_command(worker_group, name="worker")
+main.add_command(portal_group, name="portal")
+main.add_command(mode_group, name="mode")
+main.add_command(log_cmd)
 
 
 @main.group()
@@ -142,6 +156,12 @@ def tick_cmd(ctx: click.Context, steps: int) -> None:
     """Advance the executive by up to N task steps."""
     core = _core(ctx.obj["data_dir"])
     results = core.tick(max_steps=steps)
+    core.audit.record(
+        "executive_tick",
+        requested_steps=steps,
+        executed=len(results),
+        last_state=results[-1].get("state") if results else None,
+    )
     click.echo(json.dumps(results, indent=2))
 
 
@@ -158,7 +178,12 @@ def status_cmd(ctx: click.Context) -> None:
     worker_report = worker_network_report(core.pairing) if core.core_identity else None
     pending_tools = core.tool_requests.list_pending()
     caps = core.capabilities.list_enabled()
+    from privatemind.operational.mode import operational_status
+
     payload = {
+        "operational_mode": operational_status(
+            core.settings.data_dir, env_mode=core.settings.operational_mode
+        ),
         "db_path": str(core.settings.db_path),
         "checkpoint": checkpoint,
         "tasks": [
@@ -375,10 +400,42 @@ def workspaces_cmd(ctx: click.Context) -> None:
     click.echo(json.dumps({"workspaces": core.workspaces.list_workspaces()}, indent=2))
 
 
+def _gate_research_probe(data_dir: Path | None) -> None:
+    from privatemind.config import Settings
+    from privatemind.operational.mode import check_probe_allowed, record_probe_attempt
+
+    settings = Settings(data_dir=data_dir) if data_dir else Settings()
+    gate = check_probe_allowed(settings.data_dir, env_mode=settings.operational_mode)
+    if not gate["allowed"]:
+        raise click.ClickException(
+            f"Probe throttled ({gate['mode']}): wait {gate['wait_seconds']}s — "
+            "see docs/OPERATIONAL_MODES.md or privatemind mode set production"
+        )
+    record_probe_attempt(settings.data_dir)
+
+
 @main.group()
 @click.pass_context
 def research(ctx: click.Context) -> None:
     """Probe and catalog free / cheap-tier services (agent recon)."""
+
+
+@research.command("operational-mode")
+@click.pass_context
+def research_operational_mode(ctx: click.Context) -> None:
+    """Presets for slow_start / test / production (agent + operator)."""
+    from privatemind.operational.mode import load_mode_presets, operational_status
+
+    settings = Settings(data_dir=ctx.obj.get("data_dir"))
+    click.echo(
+        json.dumps(
+            {
+                "active": operational_status(settings.data_dir, env_mode=settings.operational_mode),
+                "presets": load_mode_presets(),
+            },
+            indent=2,
+        )
+    )
 
 
 @research.command("probe-api")
@@ -390,6 +447,7 @@ def research_probe_api(ctx: click.Context, base_url: str, api_key_env: str | Non
 
     from privatemind.research.probe import probe_openai_compatible
 
+    _gate_research_probe(ctx.obj.get("data_dir"))
     key = os.environ.get(api_key_env) if api_key_env else None
     result = probe_openai_compatible(base_url=base_url, api_key=key)
     click.echo(json.dumps(result, indent=2))
@@ -404,6 +462,7 @@ def research_probe_nim(ctx: click.Context, api_key_env: str) -> None:
 
     from privatemind.research.probe import probe_openai_compatible
 
+    _gate_research_probe(ctx.obj.get("data_dir"))
     key = os.environ.get(api_key_env) or os.environ.get("NGC_API_KEY")
     if not key:
         raise click.ClickException(f"Set {api_key_env} or NGC_API_KEY")
@@ -418,6 +477,8 @@ def research_probe_nim(ctx: click.Context, api_key_env: str) -> None:
 def research_probe_brave_search(ctx: click.Context, api_key_env: str, query: str) -> None:
     """Probe Brave Search API web endpoint (SERP)."""
     import os
+
+    _gate_research_probe(ctx.obj.get("data_dir"))
 
     from privatemind.research.probe import probe_brave_web_search
 
@@ -441,6 +502,86 @@ def research_capability_domains(ctx: click.Context) -> None:
                 "trust_ladder": meta.get("trust_ladder"),
                 "domains": list_domains(meta),
                 "mandate_doc": "docs/AGENT_CAPABILITY_MANDATE.md",
+            },
+            indent=2,
+        )
+    )
+
+
+@research.command("self-model")
+@click.pass_context
+def research_self_model(ctx: click.Context) -> None:
+    """Mind layers skeleton and empty self-map graph (agent extends)."""
+    from privatemind.research.self_model import load_self_model, list_layers
+
+    meta = load_self_model()
+    click.echo(
+        json.dumps(
+            {
+                "schema_version": meta.get("schema_version"),
+                "layers": list_layers(meta),
+                "layers_seed_note": meta.get("layers_seed_note"),
+                "food_metaphor": meta.get("food_metaphor"),
+                "layer_extensions": meta.get("layer_extensions", []),
+                "needs": meta.get("needs", []),
+                "activity_modes": meta.get("activity_modes", []),
+                "graph": meta.get("graph"),
+                "routing_policies": meta.get("routing_policies", []),
+                "vocabulary": meta.get("vocabulary"),
+                "mind_layers_doc": meta.get("mind_layers_doc"),
+                "helper_playbooks_index": meta.get("helper_playbooks_index"),
+            },
+            indent=2,
+        )
+    )
+
+
+@research.command("self-model-status")
+@click.pass_context
+def research_self_model_status(ctx: click.Context) -> None:
+    """Counts for needs/graph — nudge to self-organise."""
+    from privatemind.research.self_model import self_model_status
+
+    click.echo(json.dumps(self_model_status(), indent=2))
+
+
+@research.command("donor-resources")
+@click.pass_context
+def research_donor_resources(ctx: click.Context) -> None:
+    """Donor commitment levels, resource kinds, and storage backends catalog."""
+    from privatemind.research.donor_resources import load_donor_resource_catalog
+
+    cat = load_donor_resource_catalog()
+    click.echo(
+        json.dumps(
+            {
+                "schema_version": cat.get("schema_version"),
+                "doc": cat.get("doc"),
+                "commitment_levels": cat.get("commitment_levels"),
+                "resource_kinds": cat.get("resource_kinds"),
+                "storage_backends": cat.get("storage_backends"),
+                "legacy_offer_tiers": cat.get("legacy_offer_tiers"),
+            },
+            indent=2,
+        )
+    )
+
+
+@research.command("helper-playbooks")
+@click.pass_context
+def research_helper_playbooks(ctx: click.Context) -> None:
+    """Index of donor/helper instruction playbooks (agent-authored)."""
+    from privatemind.research.helper_playbooks import load_helper_playbooks, list_playbooks
+
+    meta = load_helper_playbooks()
+    click.echo(
+        json.dumps(
+            {
+                "schema_version": meta.get("schema_version"),
+                "instructions_doc": meta.get("instructions_doc"),
+                "helpers_dir": meta.get("helpers_dir"),
+                "non_key_help_examples": meta.get("non_key_help_examples"),
+                "playbooks": list_playbooks(meta),
             },
             indent=2,
         )

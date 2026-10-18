@@ -1,0 +1,26 @@
+{
+  "schema_version": "2026-10-18",
+  "maintainer": "executive",
+  "instructions_doc": "docs/DONOR_AND_HELPER_INSTRUCTIONS.md",
+  "helpers_dir": "docs/helpers",
+  "operator_note": "Empty playbooks array is intentional. The agent adds rows and markdown files; operators review for safety only.",
+  "playbooks": [],
+  "playbook_row_fields_suggested": [
+    "id",
+    "audience",
+    "title",
+    "markdown_path",
+    "trust_level",
+    "asks_for_keys",
+    "last_updated",
+    "summary"
+  ],
+  "non_key_help_examples": [
+    "Review and merge draft PRs",
+    "Answer clarification on assistance thread",
+    "Point DNS / TLS at agent hostname",
+    "Run one-off command on body server you already trust",
+    "Feedback on UX or docs",
+    "Temporary compute without API keys"
+  ]
+}

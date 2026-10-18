@@ -4,6 +4,24 @@
 
 The trusted core keeps private state, tasks, and memory. API keys and SSH identities live in an internal **credential vault**, not in chat logs or the memory database.
 
+### Who you are (pick a path)
+
+| Role | Start here |
+|------|------------|
+| **Primary admin (first boot)** | [docs/FIRST_BOOT_ADMIN.md](docs/FIRST_BOOT_ADMIN.md) — vault, node identity, wake, portal |
+| **Contributor / donor** | Operator gives you a portal URL → [docs/CONTRIBUTOR_GETTING_STARTED.md](docs/CONTRIBUTOR_GETTING_STARTED.md) |
+| **Helper (no servers)** | [docs/HELPER_GETTING_STARTED.md](docs/HELPER_GETTING_STARTED.md) |
+
+**Local portal** (instructions + donor intent queue, no auto-provisioning):
+
+```bash
+privatemind portal serve   # http://127.0.0.1:8780
+```
+
+Details: [docs/PORTAL.md](docs/PORTAL.md).
+
+**Slow start / test / production:** `privatemind init` sets **`slow_start`** throttles (ticks, probes, idle loops). [docs/OPERATIONAL_MODES.md](docs/OPERATIONAL_MODES.md) — use **`test`** for new workers.
+
 ---
 
 ## 0. What you are setting up
@@ -28,14 +46,26 @@ Give the agent only what it needs. Revoke by disabling or deleting an account in
 
 Requirements: Python 3.11+, `git`, and `ssh` on your PATH.
 
+**Quick install (review script first):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/GeneralKnowledge/PrivateMind/main/scripts/install.sh | bash
+```
+
+Or clone manually:
+
 ```bash
 git clone https://github.com/GeneralKnowledge/PrivateMind.git
 cd PrivateMind
-python3 -m pip install -e ".[dev]"
-privatemind init
+./scripts/install.sh
+# or: python3 -m pip install -e ".[dev]" && privatemind init
 ```
 
-Data directory (default): `~/.privatemind/`
+Options: `./scripts/install.sh --help` — env `PRIVATE_MIND_INSTALL_DIR`, `PRIVATE_MIND_REPO_ROOT` to install from an existing checkout.
+
+Data directory (default): `~/.privatemind/` · First boot: [docs/FIRST_BOOT_ADMIN.md](docs/FIRST_BOOT_ADMIN.md)
+
+Runtime knobs (mode, portal) are **operator-controlled today**; the agent is guided to **take over day-two control** within the trust floor — [docs/AGENT_RUNTIME_CONTROL.md](docs/AGENT_RUNTIME_CONTROL.md).
 
 ---
 
@@ -162,6 +192,10 @@ pytest tests/test_self_improvement_loop.py -q
 | `privatemind tick --steps N` | Advance tasks |
 | `privatemind task "..."` | Enqueue work |
 | `privatemind status` | Tasks, checkpoint, human help queue |
+| `privatemind portal serve` | Local web hub for donor/helper instructions + intents |
+| `privatemind portal intents list` | Review submitted donor intents |
+| `privatemind log` | Recent activity (wake, tick, tools, mode) — [docs/ACTIVITY_LOG.md](docs/ACTIVITY_LOG.md) |
+| `privatemind log --follow` | Poll activity while debugging |
 | `privatemind demo --run` | Offline milestone demo (no vault required) |
 | `privatemind capabilities` | Registered models/tools |
 
