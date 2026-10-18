@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Dedicated-server mode: auto-approve tool requests (lab only; default off)
     auto_approve_tool_requests: bool = False
 
+    worker_host: str = "127.0.0.1"
+    worker_port: int = 8765
+
     @property
     def db_path(self) -> Path:
         return self.data_dir / self.db_name

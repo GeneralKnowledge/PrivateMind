@@ -16,6 +16,7 @@ from privatemind.trust import Provenance, TrustLevel
 if False:  # TYPE_CHECKING pattern without importing at runtime
     from privatemind.tools.git_tools import GitToolHandler
     from privatemind.improvement.repo_tools import RepoToolHandler
+    from privatemind.tools.worker_tools import WorkerToolHandler
 
 FORBIDDEN_REMEMBER_KINDS = frozenset(
     {"system", "improvement_run", "improvement_outcome", "trusted_policy", "human_answer"}
@@ -36,6 +37,7 @@ class ToolExecutor:
         tool_requests: ToolRequestStore | None = None,
         auto_approve_tool_requests: bool = False,
         on_tool_approved=None,
+        worker: "WorkerToolHandler | None" = None,
     ) -> None:
         self._memory = memory
         self._assistance = assistance
@@ -45,6 +47,7 @@ class ToolExecutor:
         self._tool_requests = tool_requests
         self._auto_approve = auto_approve_tool_requests
         self._on_tool_approved = on_tool_approved
+        self._worker = worker
         self._allowed = {
             "remember": self._remember,
             "recall": self._recall,
@@ -60,9 +63,13 @@ class ToolExecutor:
             names.extend(self._git.tool_names())
         if self._repo:
             names.extend(self._repo.tool_names())
+        if self._worker:
+            names.extend(self._worker.tool_names())
         return sorted(set(names))
 
     def invoke(self, name: str, arguments: dict[str, Any], *, task_id: str | None = None) -> ToolResult:
+        if self._worker and name in self._worker.tool_names():
+            return self._worker.invoke(name, arguments, task_id=task_id)
         if self._repo and name in self._repo.tool_names():
             return self._repo.invoke(name, arguments)
         if self._git and name in self._git.tool_names():

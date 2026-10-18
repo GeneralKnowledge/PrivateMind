@@ -23,8 +23,12 @@ from privatemind.integrations.git_cli import GitCli
 from privatemind.tools.builtin import ToolExecutor
 from privatemind.tools.git_tools import GitToolHandler
 from privatemind.tools.requests import ToolRequestStore
+from privatemind.tools.worker_tools import WorkerToolHandler
 from privatemind.trust import Provenance, TrustLevel
 from privatemind.vault.store import CredentialVault
+from privatemind.worker.hub import WorkerHub
+from privatemind.worker.identity import NodeIdentity
+from privatemind.worker.pairing_store import PairingStore
 
 
 SYSTEM_PROMPT_TEMPLATE = """You are the planning component of PrivateMind's trusted core.
@@ -65,6 +69,20 @@ class PrivateMindCore:
         )
         repo_tools = RepoToolHandler(self.workspaces)
         self.tool_requests = ToolRequestStore(self.db)
+        self.pairing = PairingStore(self.db)
+        core_identity_path = self.settings.data_dir / "core_identity.json"
+        self.core_identity: NodeIdentity | None = None
+        self.worker_hub: WorkerHub | None = None
+        if core_identity_path.is_file():
+            self.core_identity = NodeIdentity.load(core_identity_path)
+            self.worker_hub = WorkerHub(
+                core_identity=self.core_identity,
+                pairing=self.pairing,
+                memory=self.memory,
+                audit=self.audit,
+                host=self.settings.worker_host,
+                port=self.settings.worker_port,
+            )
 
         def _approve_tool_request(req_id: str, tool_name: str, purpose: str, justification: str) -> str | None:
             cap_id = f"tool.requested.{tool_name.replace(' ', '_')[:40]}"
@@ -84,6 +102,7 @@ class PrivateMindCore:
             self.audit.record("tool_request_auto_approved", request_id=req_id, capability_id=cap_id)
             return cap_id
 
+        worker_tools = WorkerToolHandler(self.worker_hub)
         self.tools = ToolExecutor(
             self.memory,
             self.assistance,
@@ -93,6 +112,7 @@ class PrivateMindCore:
             tool_requests=self.tool_requests,
             auto_approve_tool_requests=self.settings.auto_approve_tool_requests,
             on_tool_approved=_approve_tool_request if self.settings.auto_approve_tool_requests else None,
+            worker=worker_tools if self.worker_hub else None,
         )
         self.improvement_workflow = ImprovementWorkflow(self)
         self.wake = WakeController(

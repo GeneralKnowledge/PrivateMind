@@ -4,6 +4,7 @@ from pathlib import Path
 import click
 
 from privatemind.cli_accounts import account_group, vault_group
+from privatemind.cli_worker import worker_group
 from privatemind.config import Settings
 from privatemind.core.agent import PrivateMindCore
 from privatemind.vault.passphrase import resolve_passphrase
@@ -39,6 +40,27 @@ def init_cmd(ctx: click.Context) -> None:
 
 main.add_command(vault_group, name="vault")
 main.add_command(account_group, name="account")
+main.add_command(worker_group, name="worker")
+
+
+@main.group()
+@click.pass_context
+def node(ctx: click.Context) -> None:
+    """Core node identity (Ed25519)."""
+
+
+@node.command("init")
+@click.pass_context
+def node_init(ctx: click.Context) -> None:
+    from privatemind.worker.identity import NodeIdentity
+
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    path = core.settings.data_dir / "core_identity.json"
+    if path.exists():
+        raise click.ClickException("Core identity already exists")
+    ident = NodeIdentity.generate("core")
+    ident.save(path)
+    click.echo(json.dumps({"fingerprint": ident.fingerprint, "public_key_b64": ident.public_key_b64}, indent=2))
 
 
 @main.command("setup-check")
