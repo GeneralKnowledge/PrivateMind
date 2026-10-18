@@ -568,6 +568,48 @@ def research_github_sources(ctx: click.Context) -> None:
     click.echo(json.dumps({"schema_version": meta.get("schema_version"), "sources": sources}, indent=2))
 
 
+@research.command("discover")
+@click.option("--source-id", default=None, help="Limit GitHub sync to one source id")
+@click.option("--offline", is_flag=True, help="Skip network fetches")
+@click.option("--write-report", is_flag=True, help="Write docs/data/free_tier_discovery_latest.json")
+@click.option("--seed-gaps", is_flag=True, help="Log pending research candidates for catalog gaps")
+@click.pass_context
+def research_discover(
+    ctx: click.Context,
+    source_id: str | None,
+    offline: bool,
+    write_report: bool,
+    seed_gaps: bool,
+) -> None:
+    """Search curated GitHub lists + hub collections; report gaps vs catalog/entitlements."""
+    from privatemind.research.discover import run_discovery, write_latest_report
+    from privatemind.research.candidates import log_candidate
+
+    report = run_discovery(github_source_id=source_id, fetch_github=not offline)
+    if write_report:
+        path = write_latest_report(report)
+        report["report_path"] = "docs/data/free_tier_discovery_latest.json"
+    if seed_gaps:
+        core = _core(ctx.obj["data_dir"], unlock_vault=False)
+        seeded = []
+        for row in report.get("gaps_from_github_lists") or []:
+            pid = str(row.get("provider_id") or "")
+            if not pid:
+                continue
+            slug = pid.replace("_", "-")
+            log_candidate(
+                core.memory,
+                slug=slug,
+                name=pid,
+                category="llm",
+                notes=str(row.get("probe_hint") or ""),
+                verdict="pending",
+            )
+            seeded.append(slug)
+        report["seeded_candidates"] = seeded
+    click.echo(json.dumps(report, indent=2))
+
+
 @research.command("github-sync")
 @click.option("--source-id", default=None, help="Fetch only one source id from free_tier_github_sources.json")
 @click.option("--offline", is_flag=True, help="Skip network; return empty scan (for tests)")

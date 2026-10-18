@@ -54,7 +54,13 @@ PROVIDER_ALIASES: tuple[tuple[str, str], ...] = (
     ("vercel ai gateway", "vercel_ai_gateway"),
     ("scaleway generative", "scaleway_genai"),
     ("deepseek", "deepseek_api"),
-    ("pollinations", "pollinations_ai"),
+    ("ai horde", "ai_horde"),
+    ("aihorde", "ai_horde"),
+    ("typhoon", "typhoon"),
+    ("opentyphoon", "typhoon"),
+    ("orcarouter", "orcarouter"),
+    ("opencode zen", "opencode_zen"),
+    ("orca router", "orcarouter"),
 )
 
 

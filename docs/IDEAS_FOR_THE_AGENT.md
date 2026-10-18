@@ -12,6 +12,8 @@ PrivateMind’s operator bootstraps **trust floors** (vault, protected paths, no
 
 **October 2026 catalogue:** Maintain [FREE_TIER_CATALOG_OCT2026.md](FREE_TIER_CATALOG_OCT2026.md) and [data/free_tier_entitlements.json](data/free_tier_entitlements.json) — Category A/B/C, official vs enforced limits, UK/card/commercial fields. Discovery via freellm.net is not proof. SambaNova = C until probe beats 402; UnoRouter = aggregator C; GitHub Models = retired.
 
+**Scheduled discovery:** Run `privatemind research discover --write-report` (optionally `--seed-gaps`). Read [data/free_tier_discovery_latest.json](data/free_tier_discovery_latest.json), probe gaps, update entitlements with official sources — do not copy directory sites into Category A.
+
 Pick what fits evidence and risk. Record limitations when something is out of scope. Prefer changes that come with tests and honest `docs/STATUS.md` updates.
 
 ## Tooling and sandbox

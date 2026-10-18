@@ -37,6 +37,26 @@
       "id": "github-readme-lists",
       "path": "docs/data/free_tier_github_sources.json",
       "notes": "Community lists; use research github-sync for hints, not Category A without probes."
+    },
+    {
+      "id": "pacocartones-always-free",
+      "url": "https://github.com/pacocartones/free-llm-api-hub/blob/main/collections/always-free.md",
+      "notes": "Perpetual $0 subset; fetched by research discover."
+    },
+    {
+      "id": "llmperks",
+      "url": "https://llmperks.com/",
+      "notes": "Polls providers periodically; discovery only."
+    },
+    {
+      "id": "freellm-site",
+      "url": "https://www.freellm.site/",
+      "notes": "68-provider directory; verify card flags."
+    },
+    {
+      "id": "research-discover",
+      "path": "privatemind research discover --write-report",
+      "notes": "Agent should run after list changes; output free_tier_discovery_latest.json"
     }
   ],
   "retired": [
@@ -475,6 +495,68 @@
         }
       ],
       "verification_notes": "Permanent anonymous access with very low RPM — useful for EU/sovereignty tests."
+    },
+    {
+      "id": "typhoon-opentyphoon",
+      "provider": "Typhoon (OpenTyphoon)",
+      "provider_id": "typhoon",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "C",
+      "model_id": "typhoon-v2.5-30b-a3b-instruct (example)",
+      "endpoint": "https://api.opentyphoon.ai/v1",
+      "free_tier_status": "unverified",
+      "limits_official": {
+        "source_url": "https://opentyphoon.ai/",
+        "community_report": "Showcase API at $0; beta"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 5,
+        "notes": "Probe after key; Thai/SEA focus."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "verify",
+      "card_required": false,
+      "commercial_use": "allowed_per_community_hub",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "community_hub",
+          "url": "https://raw.githubusercontent.com/pacocartones/free-llm-api-hub/main/collections/always-free.md"
+        }
+      ],
+      "verification_notes": "Found via discover run — confirm official ToS and limits before B/A."
+    },
+    {
+      "id": "ai-horde-volunteer",
+      "provider": "AI Horde",
+      "provider_id": "ai_horde",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "C",
+      "model_id": "(worker-selected)",
+      "endpoint": "https://aihorde.net/api/v2/",
+      "free_tier_status": "selected_models_free",
+      "limits_official": {
+        "source_url": "https://aihorde.net/",
+        "anonymous_key": "0000000000"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 1,
+        "notes": "Queue latency unbounded; not OpenAI-compatible chat schema."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "assumed_ok",
+      "card_required": false,
+      "commercial_use": "model_license_dependent",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "community_hub",
+          "url": "https://raw.githubusercontent.com/pacocartones/free-llm-api-hub/main/collections/always-free.md"
+        }
+      ],
+      "verification_notes": "Volunteer network — useful for batch/experiment, not brain planner default."
     }
   ]
 }
