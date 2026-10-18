@@ -18,6 +18,8 @@ PrivateMind’s operator bootstraps **trust floors** (vault, protected paths, no
 
 Pick what fits evidence and risk. Record limitations when something is out of scope. Prefer changes that come with tests and honest `docs/STATUS.md` updates.
 
+**Selfhood, rhythm, donors, solo operator:** [AGENT_VISION_SPARKS.md](AGENT_VISION_SPARKS.md) — optional metaphors and patterns (food vs seasons, playbooks, graph nuance). Same vein as [AGENT_MIND_LAYERS.md](AGENT_MIND_LAYERS.md); you decide what becomes real.
+
 ## Capabilities beyond inference (search, grounding, APIs)
 
 Think **out of the box**: the bottleneck is often not another LLM but **live data** (web search, instant answers, structured facts).
@@ -30,7 +32,7 @@ Think **out of the box**: the bottleneck is often not another LLM but **live dat
 
 ## Architecture patterns (consider — do not wait for operator)
 
-See **[AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md)** — e.g. **servers as API egress proxies** so cloud providers see worker IPs not the brain; regional exits, caching GET proxies, mTLS brain→body→API, queue coordinators. Evaluate, document, request approval; respect ToS.
+See **[AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md)** — donor/key affinity, sharded egress, movable keys, donor churn; mTLS brain→worker→API. Evaluate, document, request approval; respect ToS.
 
 ## Tooling and sandbox
 

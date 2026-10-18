@@ -92,6 +92,7 @@ privatemind research helper-playbooks
 
 ## Related
 
+- [AGENT_VISION_SPARKS.md](AGENT_VISION_SPARKS.md) — more optional patterns in this vein (seasons, satiety, playbooks, shadow graph)
 - [AGENT_CAPABILITY_MANDATE.md](AGENT_CAPABILITY_MANDATE.md)
 - [DONOR_AND_HELPER_INSTRUCTIONS.md](DONOR_AND_HELPER_INSTRUCTIONS.md)
 - [AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md)
