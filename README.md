@@ -18,7 +18,7 @@ Prepare **separate accounts** for the agent (recommended):
 
 Give the agent only what it needs. Revoke by disabling or deleting an account in the vault.
 
-**Building without paid services:** See [docs/FREE_TIER_RESEARCH.md](docs/FREE_TIER_RESEARCH.md) for provisional notes on free tiers (Groq, Gemini, GitHub, Oracle Always Free, Cloudflare Workers, etc.) and how they map to PrivateMind.
+**Building without paid services:** See [docs/FREE_TIER_RESEARCH.md](docs/FREE_TIER_RESEARCH.md) (NVIDIA NIM, GPU spillover, hidden quotas), the backlog [docs/FREE_TIER_CANDIDATES.md](docs/FREE_TIER_CANDIDATES.md), and the provider catalog [docs/data/free_tier_provider_catalog.json](docs/data/free_tier_provider_catalog.json). Probe with `privatemind research probe-api` / `probe-nim`, diff your quota JSON with `research quota-diff`, seed candidates with `research seed-catalog`.
 
 ---
 

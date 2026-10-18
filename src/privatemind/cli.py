@@ -457,6 +457,55 @@ def research_candidates_list(ctx: click.Context, verdict: str | None) -> None:
     click.echo(json.dumps({"candidates": list_candidates(core.memory, verdict=verdict)}, indent=2))
 
 
+@research.command("provider-catalog")
+@click.option("--provider-id", default=None, help="Show one provider entry by quota-file key (e.g. nvidia_nim)")
+@click.pass_context
+def research_provider_catalog(ctx: click.Context, provider_id: str | None) -> None:
+    from privatemind.research.provider_catalog import load_catalog
+
+    cat = load_catalog()
+    providers = cat.get("providers", {})
+    if provider_id:
+        entry = providers.get(provider_id)
+        if entry is None:
+            raise click.ClickException(f"Unknown provider id: {provider_id}")
+        click.echo(json.dumps({provider_id: entry}, indent=2))
+        return
+    click.echo(
+        json.dumps(
+            {
+                "schema_version": cat.get("schema_version"),
+                "provider_ids": sorted(providers.keys()),
+                "catalog_path": "docs/data/free_tier_provider_catalog.json",
+            },
+            indent=2,
+        )
+    )
+
+
+@research.command("quota-diff")
+@click.argument("quota_file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.pass_context
+def research_quota_diff(ctx: click.Context, quota_file: Path) -> None:
+    """Compare a runtime quota JSON file to the repo provider catalog."""
+    from privatemind.research.provider_catalog import diff_quota_state, load_quota_state
+
+    quota = load_quota_state(quota_file)
+    click.echo(json.dumps(diff_quota_state(quota), indent=2))
+
+
+@research.command("seed-catalog")
+@click.option("--force", is_flag=True, help="Re-log catalog rows even if slug already exists")
+@click.pass_context
+def research_seed_catalog(ctx: click.Context, force: bool) -> None:
+    """Seed memory candidates from docs/data/free_tier_provider_catalog.json."""
+    from privatemind.research.provider_catalog import seed_candidates_from_catalog
+
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    result = seed_candidates_from_catalog(core.memory, skip_existing=not force)
+    click.echo(json.dumps(result, indent=2))
+
+
 @main.group()
 @click.pass_context
 def tool_request(ctx: click.Context) -> None:

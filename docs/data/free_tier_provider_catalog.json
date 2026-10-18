@@ -1,0 +1,166 @@
+{
+  "schema_version": "2026-09-27",
+  "description": "Static metadata for free-tier LLM providers. Pairs with runtime quota state JSON (same provider keys).",
+  "providers": {
+    "aion_labs": {
+      "name": "Aion Labs",
+      "category": "llm",
+      "candidate_slug": "aion-labs",
+      "base_url": "https://api.aionlabs.ai/v1",
+      "api_key_env": ["AION_API_KEY", "OPENAI_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://api.aionlabs.ai/docs/rate-limits/",
+      "notes": "Free tier: ~15 RPM, daily token cap; no card for daily allowance."
+    },
+    "cohere": {
+      "name": "Cohere",
+      "category": "llm",
+      "candidate_slug": "cohere-trial",
+      "base_url": "https://api.cohere.com/compatibility/v1",
+      "api_key_env": ["COHERE_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://docs.cohere.com/",
+      "notes": "Trial/production keys; verify current free trial limits in dashboard."
+    },
+    "google_gemini": {
+      "name": "Google Gemini API",
+      "category": "llm",
+      "candidate_slug": "google-gemini",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+      "api_key_env": ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
+      "probe_openai_models": false,
+      "docs_url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "notes": "Free tier per model in AI Studio; OpenAI-compatible surface available."
+    },
+    "mistral": {
+      "name": "Mistral La Plateforme",
+      "category": "llm",
+      "candidate_slug": "mistral-api",
+      "base_url": "https://api.mistral.ai/v1",
+      "api_key_env": ["MISTRAL_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://docs.mistral.ai/",
+      "notes": "Check console for experiment/free allowances; not a fixed public free tier."
+    },
+    "z_ai": {
+      "name": "Z.AI (GLM)",
+      "category": "llm",
+      "candidate_slug": "z-ai-glm",
+      "base_url": "https://api.z.ai/api/paas/v4",
+      "api_key_env": ["ZAI_API_KEY", "Z_AI_API_KEY"],
+      "probe_openai_models": false,
+      "docs_url": "https://docs.z.ai/",
+      "notes": "Often reached via aggregators (Kilo :free, BYOK); verify direct API quotas."
+    },
+    "cloudflare_workers_ai": {
+      "name": "Cloudflare Workers AI",
+      "category": "llm",
+      "candidate_slug": "cloudflare-workers-ai",
+      "base_url": "",
+      "api_key_env": ["CLOUDFLARE_API_TOKEN"],
+      "probe_openai_models": false,
+      "docs_url": "https://developers.cloudflare.com/workers-ai/",
+      "notes": "Account-scoped REST URL (@cf models); 10k Neurons/day free tier on Workers."
+    },
+    "groq": {
+      "name": "Groq",
+      "category": "llm",
+      "candidate_slug": "groq",
+      "base_url": "https://api.groq.com/openai/v1",
+      "api_key_env": ["GROQ_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://console.groq.com/docs/rate-limits",
+      "notes": "Strong default free LLM; org-wide RPM/RPD/TPM per model."
+    },
+    "huggingface": {
+      "name": "Hugging Face Inference",
+      "category": "llm",
+      "candidate_slug": "huggingface-inference",
+      "base_url": "https://api-inference.huggingface.co/v1",
+      "api_key_env": ["HF_TOKEN", "HUGGINGFACE_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://huggingface.co/docs/inference-providers",
+      "notes": "Free credits / rate limits vary; serverless NIM subset documented separately."
+    },
+    "kilo": {
+      "name": "Kilo Gateway",
+      "category": "llm",
+      "candidate_slug": "kilo-gateway-free",
+      "base_url": "https://ai-gateway.kilo.ai/api/v1",
+      "api_key_env": ["KILO_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://kilo.ai/docs/gateway/models-and-providers",
+      "notes": "Models with :free; anonymous ~200 req/h/IP; may route to NVIDIA trial endpoints."
+    },
+    "llm7": {
+      "name": "LLM7.io",
+      "category": "llm",
+      "candidate_slug": "llm7-io",
+      "base_url": "https://api.llm7.io/v1",
+      "api_key_env": ["LLM7_API_KEY", "LLM7_API_TOKEN"],
+      "probe_openai_models": true,
+      "docs_url": "https://docs.llm7.io/limits",
+      "notes": "Free token from dash.llm7.io; quotas change with demand."
+    },
+    "modelscope": {
+      "name": "ModelScope API-Inference",
+      "category": "llm",
+      "candidate_slug": "modelscope-inference",
+      "base_url": "https://api-inference.modelscope.cn/v1",
+      "api_key_env": ["MODELSCOPE_API_KEY", "MODELSCOPE_SDK_TOKEN"],
+      "probe_openai_models": true,
+      "docs_url": "https://www.modelscope.cn/docs/model-service/API-Inference/intro",
+      "notes": "Registered users; Magicube/daily limits; Alibaba Cloud link often required."
+    },
+    "nvidia_nim": {
+      "name": "NVIDIA NIM (hosted)",
+      "category": "llm",
+      "candidate_slug": "nvidia-nim-hosted",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "api_key_env": ["NVIDIA_API_KEY", "NGC_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://build.nvidia.com/",
+      "notes": "Per-model RPM on build.nvidia.com; use research probe-nim."
+    },
+    "ollama_cloud": {
+      "name": "Ollama Cloud",
+      "category": "llm",
+      "candidate_slug": "ollama-cloud",
+      "base_url": "https://ollama.com/api",
+      "api_key_env": ["OLLAMA_API_KEY"],
+      "probe_openai_models": false,
+      "docs_url": "https://ollama.com/cloud",
+      "notes": "Cloud-hosted models; BYOK via Kilo; verify current free slice."
+    },
+    "openrouter": {
+      "name": "OpenRouter",
+      "category": "llm",
+      "candidate_slug": "openrouter-free",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key_env": ["OPENROUTER_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://openrouter.ai/docs/api/reference/limits",
+      "notes": ":free models; 50/day default without purchase."
+    },
+    "ovhcloud_ai_endpoints": {
+      "name": "OVHcloud AI Endpoints",
+      "category": "llm",
+      "candidate_slug": "ovhcloud-ai-endpoints",
+      "base_url": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1",
+      "api_key_env": ["OVHCLOUD_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://docs.ovhcloud.com/en/public-cloud/ai-machine-learning/ai-endpoints-capabilities/",
+      "notes": "Anonymous ~2 RPM/IP/model; higher with Public Cloud API key."
+    },
+    "siliconflow": {
+      "name": "SiliconFlow",
+      "category": "llm",
+      "candidate_slug": "siliconflow-free",
+      "base_url": "https://api.siliconflow.cn/v1",
+      "api_key_env": ["SILICONFLOW_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://docs.siliconflow.com/en/userguide/rate-limits/rate-limit-and-upgradation",
+      "notes": "Many free models with fixed RPM/TPM; identity verification for some models."
+    }
+  }
+}
