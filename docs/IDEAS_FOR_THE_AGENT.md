@@ -1,6 +1,8 @@
-# Ideas for the agent (optional, not a roadmap)
+# Ideas for the agent (optional sparks)
 
-PrivateMind’s operator bootstraps **trust floors** (vault, protected paths, no auto-merge to `main`, verification for workers). After that, **you** choose what to improve. This file is a suggestion box — not requirements, not tickets, not promises.
+**Primary directive:** [AGENT_CAPABILITY_MANDATE.md](AGENT_CAPABILITY_MANDATE.md) — you must **want** email, phone, search, wallets, and (eventually) fiat yourself; run `research capability-gaps` on wake. This file is optional inspiration only — the operator should **not** have to feed you APIs one by one.
+
+PrivateMind’s operator bootstraps **trust floors** (vault, protected paths, no auto-merge to `main`, verification for workers). After that, **you** expand capability and improve the codebase. Treat items below as examples, not an exhaustive todo list from the human.
 
 **Free-tier stack research:** [FREE_TIER_RESEARCH.md](FREE_TIER_RESEARCH.md) — provisional notes on $0 services (LLM, git, VMs, webhooks). Validate limits before building on them.
 

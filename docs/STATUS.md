@@ -85,7 +85,7 @@ Configure defaults: `PRIVATE_MIND_TOOL_SANDBOX_*`. Per-tool overrides via `tool-
 
 ## Agent-directed improvements
 
-Optional ideas live in [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md). Provisional free-tier service research: [FREE_TIER_RESEARCH.md](FREE_TIER_RESEARCH.md), October catalogue [FREE_TIER_CATALOG_OCT2026.md](FREE_TIER_CATALOG_OCT2026.md) + [data/free_tier_entitlements.json](data/free_tier_entitlements.json), backlog [FREE_TIER_CANDIDATES.md](FREE_TIER_CANDIDATES.md), router metadata [data/free_tier_provider_catalog.json](data/free_tier_provider_catalog.json), CLI `privatemind research discover|entitlements|tool-entitlements|probe-api|probe-brave-search|github-sync|candidate`. Web search catalogue: [WEB_SEARCH_AND_TOOLS_OCT2026.md](WEB_SEARCH_AND_TOOLS_OCT2026.md). Philosophy: [GRADUATED_AUTONOMY.md](GRADUATED_AUTONOMY.md).
+Optional ideas live in [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md). Provisional free-tier service research: [FREE_TIER_RESEARCH.md](FREE_TIER_RESEARCH.md), October catalogue [FREE_TIER_CATALOG_OCT2026.md](FREE_TIER_CATALOG_OCT2026.md) + [data/free_tier_entitlements.json](data/free_tier_entitlements.json), backlog [FREE_TIER_CANDIDATES.md](FREE_TIER_CANDIDATES.md), router metadata [data/free_tier_provider_catalog.json](data/free_tier_provider_catalog.json), CLI `privatemind research capability-domains|capability-gaps|discover|entitlements|tool-entitlements|…`. Agent mandate: [AGENT_CAPABILITY_MANDATE.md](AGENT_CAPABILITY_MANDATE.md). Web search: [WEB_SEARCH_AND_TOOLS_OCT2026.md](WEB_SEARCH_AND_TOOLS_OCT2026.md). Philosophy: [GRADUATED_AUTONOMY.md](GRADUATED_AUTONOMY.md).
 
 ## Next steps (for the agent or operator — not a central roadmap)
 
