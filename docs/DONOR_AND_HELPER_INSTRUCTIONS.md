@@ -24,10 +24,15 @@ When someone **does** donate compute or keys, they should get **clear, scoped** 
 
 Suggested playbook audiences (add more as layers grow):
 
-- **solo_operator** — help without new keys (review, merge, uptime, answers)
-- **compute_donor** — worker pairing, mTLS, no keys yet
-- **key_donor** — scoped API keys, which services, rotation, revoke
-- **hybrid_donor** — machine + keys (see [AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md) affinity)
+- **solo_operator** — help without new keys (review, merge, uptime, answers); maintain a **non-key menu** list
+- **helper_reviewer** — PR review, repro bugs, doc feedback — zero infrastructure
+- **compute_donor** — worker pairing, mTLS, no keys yet (**bronze** tier)
+- **key_donor** — scoped API keys, which services, rotation, revoke (**silver** tier)
+- **hybrid_donor** — machine + keys (**gold** if sustained + attested; see [AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md) affinity)
+
+**Contribution menu:** document bronze / silver / gold in each playbook header. **Want-ads:** optional `docs/helpers/wants.md` for honest capacity requests. **Donor exit ritual:** checklist you own — revoke keys, drain jobs, update self-map graph, archive playbook row in JSON.
+
+More sparks: [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md) (vision sparks section).
 
 ---
 

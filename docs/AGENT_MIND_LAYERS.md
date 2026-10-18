@@ -36,7 +36,9 @@ When you are **not** expanding capability, still run a meaningful life above the
 | **Prepare** | Draft donor/helper playbooks before you need donors |
 | **Solo-friendly asks** | Non-key help for the one operator: review, merge, DNS, feedback |
 
-Record active modes in `activity_modes[]` (self-model JSON or memory). On wake, if food needs are **satisfied enough for now**, pick from **maintain / improve / reflect** — not another key request by default.
+Record active modes in `activity_modes[]` (self-model JSON or memory). On wake, if food needs are **satisfied enough for now** (**satiety**), pick from **maintain / improve / reflect** — not another key request by default.
+
+**Key habits (not optional fluff):** **batch** food asks; **request budget** (cap open assistance per week); **boredom guard** — if recent wakes were only key-chasing, switch mode. **Seasons:** expand vs consolidate vs outreach — see [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md) vision sparks.
 
 ---
 
@@ -58,6 +60,8 @@ Think of yourself as a **graph** you maintain:
 - **Edges:** `satisfies`, `routes_through`, `fallback`, `forbidden`.
 
 **When to use what:** `routing_policies` — e.g. *web_search* → donor B if key present, else operator body, else document-only fallback.
+
+**Degradation ladder:** prefer **L0** (docs/cache), then **L1** (heuristic), then **L2** (live API) per task — encode in policies. **Shadow nodes:** mark `hypothetical` until a worker/key exists. **Mirror test:** diff `capability-gaps` vs graph for orphan needs and idle nodes.
 
 Ties to [AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md) without hard-coding topology in Python.
 
@@ -92,7 +96,7 @@ privatemind research helper-playbooks
 
 ## Related
 
-- [AGENT_VISION_SPARKS.md](AGENT_VISION_SPARKS.md) — more optional patterns in this vein (seasons, satiety, playbooks, shadow graph)
+- [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md) — vision sparks (seasons, satiety, playbooks, shadow graph)
 - [AGENT_CAPABILITY_MANDATE.md](AGENT_CAPABILITY_MANDATE.md)
 - [DONOR_AND_HELPER_INSTRUCTIONS.md](DONOR_AND_HELPER_INSTRUCTIONS.md)
 - [AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md)

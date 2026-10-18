@@ -53,13 +53,26 @@
       "worker",
       "vault_slot",
       "capability_domain",
-      "memory_kind"
+      "memory_kind",
+      "person_role",
+      "hypothetical"
     ],
     "edge_kinds": [
       "satisfies",
       "routes_through",
       "fallback",
-      "forbidden"
+      "forbidden",
+      "could_satisfy"
+    ],
+    "key_custody_states": [
+      "vault_only",
+      "donor_colocated",
+      "in_transit"
+    ],
+    "degradation_levels": [
+      "L0_docs_cache",
+      "L1_heuristic",
+      "L2_live_api"
     ],
     "need_fields_suggested": [
       "id",
@@ -77,6 +90,9 @@
       "worker_id",
       "vault_kind",
       "volatile",
+      "hypothetical",
+      "key_custody",
+      "attestation",
       "notes"
     ],
     "edge_fields_suggested": [
@@ -91,7 +107,8 @@
       "task_or_tool",
       "prefer_node_ids",
       "fallback_node_ids",
-      "floor_checks"
+      "floor_checks",
+      "degradation_level"
     ],
     "layer_extension_fields_suggested": [
       "id",

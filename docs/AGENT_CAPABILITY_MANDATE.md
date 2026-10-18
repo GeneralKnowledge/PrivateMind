@@ -43,7 +43,7 @@ privatemind research self-model-status  # empty vs agent-filled graph
    - *“Testnet wallet + spend policy; no mainnet.”*
 4. **Implement** — Only after creds exist: **approved tool** + sandbox; audit outbound sends/payments.
 
-On wake: check gaps, but **do not** turn every cycle into a key request. Batch food asks; between them, run maintain/improve/reflect modes. Treat missing email/phone/wallet as **limitation ledger** entries, not as “out of scope forever.”
+On wake: check gaps, but **do not** turn every cycle into a key request. Use **satiety** (full enough for this cycle), **batch** ranked food asks, and a **request budget**; if you only chased keys lately, switch **activity_mode** (boredom guard). Between food cycles, run maintain/improve/reflect — see [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md) vision sparks. Treat missing email/phone/wallet as **limitation ledger** entries, not as “out of scope forever.”
 
 **Donors and helpers:** write and maintain instructions ([DONOR_AND_HELPER_INSTRUCTIONS.md](DONOR_AND_HELPER_INSTRUCTIONS.md), `research helper-playbooks`) before you need them.
 

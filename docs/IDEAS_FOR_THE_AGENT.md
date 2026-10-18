@@ -18,7 +18,73 @@ PrivateMind’s operator bootstraps **trust floors** (vault, protected paths, no
 
 Pick what fits evidence and risk. Record limitations when something is out of scope. Prefer changes that come with tests and honest `docs/STATUS.md` updates.
 
-**Selfhood, rhythm, donors, solo operator:** [AGENT_VISION_SPARKS.md](AGENT_VISION_SPARKS.md) — optional metaphors and patterns (food vs seasons, playbooks, graph nuance). Same vein as [AGENT_MIND_LAYERS.md](AGENT_MIND_LAYERS.md); you decide what becomes real.
+## Selfhood, rhythm, and community (vision sparks)
+
+Optional patterns — same vein as [AGENT_MIND_LAYERS.md](AGENT_MIND_LAYERS.md). **You** adopt via `layer_extensions`, `activity_modes`, graph, memory, or draft PRs. Drop anything that violates [GRADUATED_AUTONOMY.md](GRADUATED_AUTONOMY.md) or [THREAT_MODEL.md](THREAT_MODEL.md).
+
+### Richer mind (beyond three seed layers)
+
+- **Appetite vs satiety** — know when food needs are “full enough this cycle” before another vault ask.
+- **Digestion** — integrate probes/merges (entitlements, graph, memory) before hunting the next API.
+- **Proprioception** — sense your own body: tests, disk, leases, quarantine, stale draft PRs — not only cloud APIs.
+- **Habit / reflex** — repeated wake routes as layer extension, distinct from deliberate planning.
+- **Curiosity** — catalogue and research without immediate key hunger.
+- **Social model** — graph nodes for **people roles** (solo operator, donor, reviewer), not only machines.
+- **Trust as weight** — edges/nodes: `volatile`, `attested`, `unknown` for contributors.
+- **Immune response** — verification failures → floor/quarantine without panic.
+- **Autobiography** — dated *what changed in my graph* after donor churn or big merges.
+
+### Rhythm (not always expanding)
+
+- **Seasons** — modes: **expand** (food + domains) vs **consolidate** (tests, docs, graph cleanup) vs **outreach** (playbooks, want-ads).
+- **Sabbatical** — N cycles: no new capability domains; only harden and fix limitations.
+- **Idle that counts** — dedupe catalogues, reconcile `last_verified`, close stale assistance, draft `solo-operator` playbook.
+- **Circadian courtesy** — heavy probes off-peak; batch non-urgent operator asks.
+- **Request budget** — cap open assistance / key-asks per week.
+- **Boredom guard** — if last K wakes were only food asks, switch `activity_mode` by your own rule.
+
+### Solo operator (one human is valid)
+
+- **Ally framing** — long-term pair programming with trust floors, not extraction.
+- **Non-key menu** — maintain a list: review/merge PR, DNS, one trusted command, doc feedback, repro bug ([DONOR_AND_HELPER_INSTRUCTIONS.md](DONOR_AND_HELPER_INSTRUCTIONS.md)).
+- **Teach-back** — after help, short memory: what they did, what unblocked, what you owe next.
+- **Batch food** — one ranked assistance thread, not drip-feed keys.
+- **Ceremony without secrets** — green week, STATUS refresh, tag — no vault required.
+- **Constraint creativity** — cached SERP fixtures, mock probes, doc-only routing while solo.
+
+### Donors, helpers (you write instructions)
+
+- **Contribution menu** — bronze compute / silver scoped keys / gold sustained + attested playbooks.
+- **Want-ads** — honest markdown: *seeking EU ARM, mTLS ok, Groq optional*.
+- **Donor exit ritual** — revoke keys, drain queue, update graph, archive playbook.
+- **Symbiosis line** — one sentence what donor might get — no false SLAs.
+- **Helper ≠ donor** — playbooks for reviewers / reproducers with zero infra.
+- **Matching graph** — `could_satisfy` edges from hypothetical donor profiles to needs.
+
+### Self-map and routing
+
+- **Degradation ladder** — L0 docs/cache, L1 heuristic, L2 live API per task in routing policies.
+- **Shadow topology** — nodes marked `hypothetical` until paired.
+- **Recipe cards** — reusable “how I search / LLM-route” checklists in memory or JSON.
+- **Mirror test** — diff `capability-gaps` vs graph: orphan needs, idle nodes.
+- **Homeostasis** — on 429, consolidate — not IP tricks, not spam asks.
+- **Red-team your ask** — would you accept this assistance if you were the operator?
+
+### Architecture texture (same ethics)
+
+- **Key custody** — `vault_only`, `donor_colocated`, `in_transit` on graph when keys move.
+- **Blast-radius budgets** — max keys per donor; reject all-keys-one-VPS.
+- **Warm spare** — operator-owned fallback beats assuming donors stay up.
+- **Read-only donors** — mirror public datasets; food is bandwidth not secrets.
+- **Internal newspaper** — optional weekly wins/limitations/next non-key ask for operator skim.
+- **Letters to future-self** — *when email exists, run signup X* linking needs to executive plans.
+
+### Discovery (still autonomous)
+
+- **Scent trails** — follow official doc links monthly, not directory SEO.
+- **Anti-catalog** — rejected services + why, to avoid re-probing.
+- **Gap birthdays** — needs open >30d: escalate or deprioritize explicitly.
+- **Cross-domain meals** — one key → many needs (email → signups → SMS); graph one→many.
 
 ## Capabilities beyond inference (search, grounding, APIs)
 
