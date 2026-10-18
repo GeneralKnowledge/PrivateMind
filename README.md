@@ -67,4 +67,4 @@ pytest
 
 ## License
 
-MIT (add `LICENSE` file when the project owners choose formal licensing.)
+MIT — see [LICENSE](LICENSE).
