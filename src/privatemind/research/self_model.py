@@ -37,23 +37,29 @@ def self_model_status(*, path: Path | None = None) -> dict[str, Any]:
     edges = graph.get("edges") or []
     needs = meta.get("needs") or []
     policies = meta.get("routing_policies") or []
+    extensions = meta.get("layer_extensions") or []
+    modes = meta.get("activity_modes") or []
 
-    populated = bool(needs or nodes or edges or policies)
+    populated = bool(needs or nodes or edges or policies or extensions or modes)
     return {
         "schema_version": meta.get("schema_version"),
-        "layers": [layer.get("id") for layer in list_layers(meta)],
+        "layers_seed": [layer.get("id") for layer in list_layers(meta)],
         "counts": {
+            "layer_extensions": len(extensions),
             "needs": len(needs),
+            "activity_modes": len(modes),
             "graph_nodes": len(nodes),
             "graph_edges": len(edges),
             "routing_policies": len(policies),
         },
         "populated_by_agent": populated,
         "mind_layers_doc": meta.get("mind_layers_doc"),
+        "food_metaphor": meta.get("food_metaphor"),
         "agent_action": (
-            "Extend needs/graph from capability-gaps and donor topology; "
+            "If food (capability-gaps) is not urgent: set activity_modes and do "
+            "maintain/improve/reflect work; extend needs/graph when blocked; "
             "see docs/AGENT_MIND_LAYERS.md"
             if not populated
-            else "Keep graph in sync when keys, donors, or entitlements change."
+            else "Keep graph and playbooks in sync; balance food asks with non-key cycles."
         ),
     }

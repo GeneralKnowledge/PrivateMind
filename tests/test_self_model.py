@@ -16,4 +16,5 @@ def test_self_model_status_empty_graph() -> None:
     assert status["counts"]["needs"] == 0
     assert status["counts"]["graph_nodes"] == 0
     assert status["populated_by_agent"] is False
-    assert "needs" in status["layers"]
+    assert "needs" in status["layers_seed"]
+    assert status["counts"]["activity_modes"] == 0

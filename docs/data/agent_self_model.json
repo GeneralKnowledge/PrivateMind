@@ -3,7 +3,10 @@
   "title": "Agent self-model skeleton (layers, needs, routing graph)",
   "maintainer": "executive",
   "mind_layers_doc": "docs/AGENT_MIND_LAYERS.md",
-  "operator_note": "Empty arrays are intentional. The agent extends needs, graph nodes/edges, and routing_policies; operators set the floor via policy and vault, not by editing this graph for the agent.",
+  "operator_note": "Empty arrays are intentional. The agent extends layers, needs, graph, activity_modes, and playbooks; operators set the floor via policy and vault.",
+  "layers_seed_note": "Three layers are a seed only. Add nuance via layer_extensions[] and memory — do not treat this file as the final psychology.",
+  "food_metaphor": "Keys and vault accounts are sustenance (capability-gaps), not the only reason to run cycles.",
+  "helper_playbooks_index": "docs/data/donor_helper_playbooks.json",
   "layers": [
     {
       "id": "needs",
@@ -36,7 +39,9 @@
       "feeds_into": ["rejections", "quarantine", "forbidden edges in graph"]
     }
   ],
+  "layer_extensions": [],
   "needs": [],
+  "activity_modes": [],
   "graph": {
     "nodes": [],
     "edges": []
@@ -87,6 +92,20 @@
       "prefer_node_ids",
       "fallback_node_ids",
       "floor_checks"
+    ],
+    "layer_extension_fields_suggested": [
+      "id",
+      "parent_layer_id",
+      "label",
+      "role",
+      "notes"
+    ],
+    "activity_mode_fields_suggested": [
+      "id",
+      "label",
+      "when",
+      "examples",
+      "active"
     ]
   }
 }

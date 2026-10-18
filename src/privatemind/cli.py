@@ -459,11 +459,16 @@ def research_self_model(ctx: click.Context) -> None:
             {
                 "schema_version": meta.get("schema_version"),
                 "layers": list_layers(meta),
+                "layers_seed_note": meta.get("layers_seed_note"),
+                "food_metaphor": meta.get("food_metaphor"),
+                "layer_extensions": meta.get("layer_extensions", []),
                 "needs": meta.get("needs", []),
+                "activity_modes": meta.get("activity_modes", []),
                 "graph": meta.get("graph"),
                 "routing_policies": meta.get("routing_policies", []),
                 "vocabulary": meta.get("vocabulary"),
                 "mind_layers_doc": meta.get("mind_layers_doc"),
+                "helper_playbooks_index": meta.get("helper_playbooks_index"),
             },
             indent=2,
         )
@@ -477,6 +482,27 @@ def research_self_model_status(ctx: click.Context) -> None:
     from privatemind.research.self_model import self_model_status
 
     click.echo(json.dumps(self_model_status(), indent=2))
+
+
+@research.command("helper-playbooks")
+@click.pass_context
+def research_helper_playbooks(ctx: click.Context) -> None:
+    """Index of donor/helper instruction playbooks (agent-authored)."""
+    from privatemind.research.helper_playbooks import load_helper_playbooks, list_playbooks
+
+    meta = load_helper_playbooks()
+    click.echo(
+        json.dumps(
+            {
+                "schema_version": meta.get("schema_version"),
+                "instructions_doc": meta.get("instructions_doc"),
+                "helpers_dir": meta.get("helpers_dir"),
+                "non_key_help_examples": meta.get("non_key_help_examples"),
+                "playbooks": list_playbooks(meta),
+            },
+            indent=2,
+        )
+    )
 
 
 @research.command("capability-gaps")
