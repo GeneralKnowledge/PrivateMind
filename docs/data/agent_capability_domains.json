@@ -2,6 +2,7 @@
   "schema_version": "2026-10-18",
   "title": "Capability domains the executive should pursue autonomously",
   "operator_note": "The agent must not acquire email, phone, wallet, or bank access without explicit human provisioning into the vault. This file defines what to want and how to ask — not permission to self-signup with stolen identity.",
+  "architecture_ideas_doc": "docs/AGENT_ARCHITECTURE_IDEAS.md",
   "trust_ladder": [
     {
       "level": 0,
@@ -140,6 +141,18 @@
       "trust_level_required": 1,
       "discovery": ["FREE_TIER_RESEARCH GPU spillover"],
       "examples": ["Body server", "Oracle always-free ARM"]
+    },
+    {
+      "id": "egress_api_proxy",
+      "label": "API egress via worker/proxy (IP & region)",
+      "priority": "medium",
+      "vault_kind_today": null,
+      "vault_kind_planned": null,
+      "trust_level_required": 1,
+      "discovery": ["docs/AGENT_ARCHITECTURE_IDEAS.md — forward proxy, regional exit, cache GETs, mTLS brain→body→API"],
+      "operator_deliverable": "Optional: approve a body/VPS as outbound proxy; allowlist target hostnames",
+      "examples": ["Brave/Groq see worker IP", "EU exit for sovereignty APIs"],
+      "never_automate": ["IP rotation to evade abuse bans or ToS"]
     }
   ]
 }

@@ -28,6 +28,10 @@ Think **out of the box**: the bottleneck is often not another LLM but **live dat
 - When you find a new search API, add a row to `free_tier_tool_entitlements.json` with official limits + conservative enforced caps — same discipline as LLM entitlements.
 - Wire through **approved tools + sandbox**; vault keys only.
 
+## Architecture patterns (consider — do not wait for operator)
+
+See **[AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md)** — e.g. **servers as API egress proxies** so cloud providers see worker IPs not the brain; regional exits, caching GET proxies, mTLS brain→body→API, queue coordinators. Evaluate, document, request approval; respect ToS.
+
 ## Tooling and sandbox
 
 - Tighten approved-tool isolation on the dedicated server (bubblewrap, separate UID, Landlock where available).

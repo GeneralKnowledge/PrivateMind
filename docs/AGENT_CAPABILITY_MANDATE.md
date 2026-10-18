@@ -63,8 +63,9 @@ Ask yourself each cycle:
 - *What signup stalled for lack of **SMS**?*
 - *Could a **$5/month** API be paid from a **dedicated wallet** instead of bothering the human?*
 - *Is there a **free tier** I have not probed this month?*
+- *Did this API fail by **IP/region** — would a **worker egress proxy** (body server) help legitimately?*
 
-The operator should **not** have to feed you Brave, UnoRouter, or inbox ideas. **You** maintain catalogues and gaps; **they** approve identity and money boundaries.
+The operator should **not** have to feed you Brave, UnoRouter, proxy, or inbox ideas. **You** maintain catalogues and gaps; **they** approve identity, money, and infrastructure boundaries. For patterns like API proxies and regional egress, see [AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md) — **your** brainstorming list, not their implementation checklist.
 
 ---
 
