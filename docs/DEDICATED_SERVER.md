@@ -18,8 +18,10 @@ Recommended pattern on your server:
 
 1. Agent calls **`request_tool`** (justification, purpose, risk notes) — queued for you.
 2. You implement or wire the tool (script, CLI wrapper, MCP adapter) on **that server only**.
-3. You **`tool-request approve`** — registers the capability in the registry and audit log.
+3. You **`tool-request approve --runner-arg ...`** — registers the capability and runs it in a **sandboxed subprocess** (scrubbed env, isolated cwd, CPU/memory limits). On the body server you can install **bubblewrap** (`bwrap`) and prepend it to `runner_argv` for stronger FS/network isolation when `unshare` is unavailable.
 4. Optional: set `PRIVATE_MIND_AUTO_APPROVE_TOOL_REQUESTS=1` only on an isolated lab box if you truly want zero-friction experiments (not recommended for production).
+
+After the trust floor is stable, the agent may prioritize its own hardening using [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md) — suggestions, not orders. See [GRADUATED_AUTONOMY.md](GRADUATED_AUTONOMY.md).
 
 The agent must **not** silently add tools by editing its own registry or trusting model output. Expansion goes through the queue so you keep a paper trail.
 
