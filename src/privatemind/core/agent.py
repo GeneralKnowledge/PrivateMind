@@ -15,7 +15,10 @@ from privatemind.activation.wake import WakeController
 from privatemind.models.factory import create_model
 from privatemind.improvement.bootstrap import ensure_improvement_task
 from privatemind.improvement.paths import WorkspaceLayout
+from privatemind.improvement.repo_tools import RepoToolHandler
 from privatemind.improvement.tracker import ImprovementTracker
+from privatemind.improvement.workflow import ImprovementWorkflow
+from privatemind.security.redaction import redact, redact_mapping
 from privatemind.integrations.git_cli import GitCli
 from privatemind.tools.builtin import ToolExecutor
 from privatemind.tools.git_tools import GitToolHandler
@@ -59,12 +62,15 @@ class PrivateMindCore:
             git=git_cli,
             audit=self.audit,
         )
+        repo_tools = RepoToolHandler(self.workspaces)
         self.tools = ToolExecutor(
             self.memory,
             self.assistance,
             git=git_tools,
+            repo=repo_tools,
             improvements=self.improvements,
         )
+        self.improvement_workflow = ImprovementWorkflow(self)
         self.wake = WakeController(
             vault=self.vault,
             tasks=self.tasks,
@@ -163,6 +169,9 @@ class PrivateMindCore:
             self.tasks.mark_blocked(task, "Awaiting human assistance")
             return {"task_id": task.id, "state": task.state.value, "blocked": "human_help"}
 
+        if self.improvement_workflow.handles(task):
+            return self.improvement_workflow.run_step(task)
+
         messages = self._build_messages(task)
         self.audit.record("model_request", task_id=task.id, model=self.model.model_id)
         response = self.model.complete(messages)
@@ -181,6 +190,11 @@ class PrivateMindCore:
         if action_type == "use_tool":
             return self._handle_tool(task, action)
         if action_type == "complete_task":
+            if self.improvement_workflow.handles(task):
+                return self._fail_task(
+                    task,
+                    "Self-improvement tasks must complete via trusted workflow verification",
+                )
             summary = str(action.get("summary", ""))
             self.tasks.mark_completed(task, summary=summary)
             self.tasks.set_checkpoint(None, notes="Idle")
@@ -205,14 +219,15 @@ class PrivateMindCore:
     def _handle_tool(self, task: Task, action: dict[str, Any]) -> dict[str, Any]:
         tool = str(action.get("tool", ""))
         arguments = action.get("arguments") or {}
-        self.tasks.log_decision(task, "tool_invoke", tool=tool, arguments=arguments)
+        safe_args = redact_mapping({k: str(v) for k, v in arguments.items()})
+        self.tasks.log_decision(task, "tool_invoke", tool=tool, arguments=safe_args)
         result = self.tools.invoke(tool, arguments, task_id=task.id)
         self.audit.record(
             "tool_result",
             task_id=task.id,
             tool=tool,
             ok=result.ok,
-            detail=result.detail,
+            detail=redact(result.detail),
         )
 
         if not result.ok:
@@ -269,7 +284,8 @@ class PrivateMindCore:
         return {"task_id": task.id, "state": task.state.value, "error": reason}
 
     def _build_messages(self, task: Task) -> list[ModelMessage]:
-        memory_snippets = self.memory.search(query="demo", limit=5)
+        query = "improvement" if self.improvement_workflow.handles(task) else "demo"
+        memory_snippets = self.memory.search(query=query, limit=8)
         mem_text = json.dumps(
             [
                 {

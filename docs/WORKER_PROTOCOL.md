@@ -43,6 +43,16 @@ Workers receive **job packages** containing only the minimum input; never the fu
 
 Job results include input hash, output, execution metadata, and signature. The trusted core records verification outcome separately from acceptance.
 
+## Code alignment (pre-network)
+
+Python datatypes in `src/privatemind/worker/contract.py` mirror this envelope:
+
+- `JobPackage` — scoped payload + `input_hash` (worker sees only the job body).
+- `JobResponseEnvelope` — signed response linked to `job_id`.
+- `VerificationRecord` — separates **authenticity** from **correctness** and **acceptance** (matches trusted-core decision flow used for self-improvement test results).
+
+Executive memory already stores tool/worker output as `tool_output` / `unverified` until the trusted core promotes or rejects.
+
 ## Status
 
-Not implemented in v0.1; central agent runs locally. This document stabilizes the intended interface before coding M3.
+Networking, pairing, and cryptography are **not implemented**. The contract is grounded in the current executive/memory model for M3 implementation.

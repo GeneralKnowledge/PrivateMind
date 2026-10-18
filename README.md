@@ -140,7 +140,14 @@ privatemind improve start \
   --branch cursor/self-improve
 ```
 
-Executive tools: `git_clone`, `git_branch`, `git_commit`, `git_push`, `run_tests`, `record_limitation`. See [docs/SELF_IMPROVEMENT.md](docs/SELF_IMPROVEMENT.md).
+Executive tools: `git_clone`, `git_branch`, `git_commit`, `git_push`, `run_tests`, `record_limitation`, plus focused `repo_read_file` / `repo_write_file`. Self-improvement tasks run a **trusted workflow** (phases + checkpoints) — see [docs/SELF_IMPROVEMENT.md](docs/SELF_IMPROVEMENT.md).
+
+Offline demonstration:
+
+```bash
+privatemind improve run-local --workspace lab --from-path tests/fixtures/improve_repo
+pytest tests/test_self_improvement_loop.py -q
+```
 
 ---
 

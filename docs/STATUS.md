@@ -1,44 +1,37 @@
-# Implementation Status Report
+# Implementation Status (authoritative with tests)
 
-## Demonstrated (Milestone 1 + onboarding)
+## Demonstrated end-to-end
 
-| Capability | Evidence |
-|------------|----------|
-| README-first bootstrap | Operator flow: vault → accounts → setup-check → wake |
-| Encrypted credential vault | PBKDF2 + Fernet; `tests/test_vault_and_wake.py` |
-| Account types | LLM, GitHub SSH, SSH host via CLI |
-| SSH/git CLI preference | Wake probes `ssh -T git@host` and optional `git ls-remote` |
-| Wake / readiness | `privatemind wake`, `setup-check`, lifecycle memory |
-| Git self-improvement (M2) | SSH git tools, workspaces, `improve clone/start`, tests |
+| Area | Evidence |
+|------|----------|
+| Persistent executive + recovery | `tests/test_milestone1.py` |
+| Vault + wake | `tests/test_vault_and_wake.py` |
+| Git SSH tools (mocked) | `tests/test_git_tools.py` |
+| **Self-improvement cycle** | `tests/test_self_improvement_loop.py` — discover → fix → test → commit → record |
+| **Restart mid-cycle** | `test_self_improvement_survives_restart` |
+| **Failed tests → failed outcome** | `test_failed_tests_block_success` |
+| **Security boundaries** | `tests/test_security_boundaries.py` — redaction, sensitive paths, tool allowlist |
 
-## Demonstrated (Milestone 1 core)
+## Self-improvement (current behaviour)
 
-| Capability | Evidence |
-|------------|----------|
-| Persistent task manager | SQLite `tasks` table, states, retries, decision log |
-| Restart recovery | `test_restart_recovery_continues_pending_task` |
-| Memory with provenance | `memory_entries` + trust labels |
-| Capability registry | Seeded models/tools; CLI `capabilities` |
-| Controlled tools | Allowlisted builtins only |
-| Model abstraction | Heuristic + optional OpenAI-compatible backend |
-| Human assistance | Pending queue, answer unblocks task |
-| End-to-end demo | CLI `demo --run` computes hash, stores memory, completes task |
+- Trusted workflow driver for `Self-improvement:*` tasks (not LLM self-judgment).
+- Reads docs/source via scoped repo tools; does not dump full tree into prompts by default.
+- Records limitations with evidence; stores tool traces as **unverified**.
+- Pushes development branches via SSH when configured; **does not merge to main**.
 
-## Incomplete (by design for v0.1)
+## Partial / operator-dependent
 
-- Self-improvement / GitHub loop (M2)
-- Worker pairing, encryption, leases (M3–M5)
-- Adversarial result verification pipeline (M4)
-- Multi-node scheduling and resource contribution (M5–M6)
+- Live `git push` to GitHub requires real `agent-github` vault key and remote.
+- `gh pr create` not integrated — open PR manually on pushed branch.
+- LLM planner optional for non-workflow tasks; heuristic demo still Milestone 1 only.
 
-## Next prioritized improvements
+## Not implemented
 
-1. **M2:** Git read tool + limitation records + worktree dev + PR submission hook
-2. **M3:** Ed25519 identity, pairing CLI, local worker process over TCP+mTLS
-3. **M4:** Deterministic re-checks, schema validation, quarantine state machine
-4. **Planner quality:** Structured action schema validation before tool invoke
-5. **Operational:** Configurable budgets and approval policies for external spend
+- Worker network transport (M3) — contract stubs in `src/privatemind/worker/contract.py`
+- Adversarial worker verification pipeline (M4)
+- Resource leases and multi-contributor scheduling (M5+)
+- Autonomous production promotion
 
-## Verification guarantees (honest)
+## Next milestone
 
-v0.1 tests exercise persistence, tool allowlists, and human unblock paths. They do **not** prove security against a networked malicious worker or prompt injection against a remote LLM backend.
+Implement **local worker process** against `worker/contract.py`: pairing, signed job/response envelopes, and verification hooks feeding existing `tool_trace` / `VerificationRecord` without exposing the vault or full memory DB.

@@ -14,6 +14,11 @@ from privatemind.trust import Provenance, TrustLevel
 
 if False:  # TYPE_CHECKING pattern without importing at runtime
     from privatemind.tools.git_tools import GitToolHandler
+    from privatemind.improvement.repo_tools import RepoToolHandler
+
+FORBIDDEN_REMEMBER_KINDS = frozenset(
+    {"system", "improvement_run", "improvement_outcome", "trusted_policy", "human_answer"}
+)
 
 
 class ToolExecutor:
@@ -25,11 +30,13 @@ class ToolExecutor:
         assistance: HumanAssistance,
         *,
         git: "GitToolHandler | None" = None,
+        repo: "RepoToolHandler | None" = None,
         improvements: ImprovementTracker | None = None,
     ) -> None:
         self._memory = memory
         self._assistance = assistance
         self._git = git
+        self._repo = repo
         self._improvements = improvements or ImprovementTracker(memory)
         self._allowed = {
             "remember": self._remember,
@@ -43,9 +50,13 @@ class ToolExecutor:
         names = list(self._allowed.keys())
         if self._git:
             names.extend(self._git.tool_names())
+        if self._repo:
+            names.extend(self._repo.tool_names())
         return sorted(set(names))
 
     def invoke(self, name: str, arguments: dict[str, Any], *, task_id: str | None = None) -> ToolResult:
+        if self._repo and name in self._repo.tool_names():
+            return self._repo.invoke(name, arguments)
         if self._git and name in self._git.tool_names():
             return self._git.invoke(name, arguments, task_id=task_id)
         if name not in self._allowed:
@@ -57,10 +68,16 @@ class ToolExecutor:
 
     def _remember(self, arguments: dict[str, Any], task_id: str | None = None) -> ToolResult:
         kind = str(arguments.get("kind", "fact"))
+        if kind in FORBIDDEN_REMEMBER_KINDS:
+            return ToolResult(
+                ok=False,
+                output=None,
+                detail=f"remember kind '{kind}' requires trusted-core promotion",
+            )
         key = str(arguments["key"])
         content = str(arguments["content"])
-        provenance = Provenance.TRUSTED_CORE
-        trust = TrustLevel.VERIFIED
+        provenance = Provenance.TOOL_OUTPUT
+        trust = TrustLevel.UNVERIFIED
         self._memory.upsert(
             kind=kind,
             key=key,
