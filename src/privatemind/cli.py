@@ -263,6 +263,58 @@ def workspaces_cmd(ctx: click.Context) -> None:
     click.echo(json.dumps({"workspaces": core.workspaces.list_workspaces()}, indent=2))
 
 
+@main.group()
+@click.pass_context
+def tool_request(ctx: click.Context) -> None:
+    """Queue and approve new tools (dedicated-server expansion)."""
+
+
+@tool_request.command("list")
+@click.pass_context
+def tool_request_list(ctx: click.Context) -> None:
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    pending = core.tool_requests.list_pending()
+    click.echo(json.dumps({"pending": pending}, indent=2))
+
+
+@tool_request.command("approve")
+@click.argument("request_id")
+@click.option("--capability-id", default=None, help="Defaults to tool.requested.<name>")
+@click.pass_context
+def tool_request_approve(ctx: click.Context, request_id: str, capability_id: str | None) -> None:
+    from privatemind.capabilities.registry import Capability
+
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    row = core.tool_requests.get(request_id)
+    if not row:
+        raise click.ClickException("Request not found")
+    cap_id = capability_id or f"tool.requested.{row['tool_name'].replace(' ', '_')[:40]}"
+    core.capabilities.register(
+        Capability(
+            id=cap_id,
+            name=f"Requested: {row['tool_name']}",
+            kind="tool",
+            description=row["purpose"],
+            operations=[row["tool_name"]],
+            limits={"granted_via": "tool_request", "request_id": request_id},
+            trust={"runs_locally": True, "operator_approved": True},
+            enabled=True,
+        )
+    )
+    ok = core.tool_requests.approve(request_id, capability_id=cap_id)
+    core.audit.record("tool_request_approved", request_id=request_id, capability_id=cap_id)
+    click.echo(json.dumps({"approved": ok, "capability_id": cap_id}))
+
+
+@tool_request.command("reject")
+@click.argument("request_id")
+@click.pass_context
+def tool_request_reject(ctx: click.Context, request_id: str) -> None:
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    ok = core.tool_requests.reject(request_id)
+    click.echo(json.dumps({"rejected": ok}))
+
+
 @main.command("capabilities")
 @click.pass_context
 def capabilities_cmd(ctx: click.Context) -> None:

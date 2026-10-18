@@ -4,7 +4,7 @@ from typing import Any
 
 from privatemind.assistance.human import HumanAssistance, HumanRequestStatus
 from privatemind.audit.log import AuditLog
-from privatemind.capabilities.registry import CapabilityRegistry
+from privatemind.capabilities.registry import Capability, CapabilityRegistry
 from privatemind.config import Settings
 from privatemind.db import Database
 from privatemind.executive.manager import TaskManager
@@ -22,6 +22,7 @@ from privatemind.security.redaction import redact, redact_mapping
 from privatemind.integrations.git_cli import GitCli
 from privatemind.tools.builtin import ToolExecutor
 from privatemind.tools.git_tools import GitToolHandler
+from privatemind.tools.requests import ToolRequestStore
 from privatemind.trust import Provenance, TrustLevel
 from privatemind.vault.store import CredentialVault
 
@@ -63,12 +64,35 @@ class PrivateMindCore:
             audit=self.audit,
         )
         repo_tools = RepoToolHandler(self.workspaces)
+        self.tool_requests = ToolRequestStore(self.db)
+
+        def _approve_tool_request(req_id: str, tool_name: str, purpose: str, justification: str) -> str | None:
+            cap_id = f"tool.requested.{tool_name.replace(' ', '_')[:40]}"
+            self.capabilities.register(
+                Capability(
+                    id=cap_id,
+                    name=f"Requested: {tool_name}",
+                    kind="tool",
+                    description=f"{purpose}\n{justification}"[:2000],
+                    operations=[tool_name],
+                    limits={"granted_via": "tool_request", "request_id": req_id},
+                    trust={"runs_locally": True, "operator_approved": True},
+                    enabled=True,
+                )
+            )
+            self.tool_requests.approve(req_id, capability_id=cap_id)
+            self.audit.record("tool_request_auto_approved", request_id=req_id, capability_id=cap_id)
+            return cap_id
+
         self.tools = ToolExecutor(
             self.memory,
             self.assistance,
             git=git_tools,
             repo=repo_tools,
             improvements=self.improvements,
+            tool_requests=self.tool_requests,
+            auto_approve_tool_requests=self.settings.auto_approve_tool_requests,
+            on_tool_approved=_approve_tool_request if self.settings.auto_approve_tool_requests else None,
         )
         self.improvement_workflow = ImprovementWorkflow(self)
         self.wake = WakeController(
