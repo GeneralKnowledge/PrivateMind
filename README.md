@@ -18,6 +18,8 @@ Prepare **separate accounts** for the agent (recommended):
 
 Give the agent only what it needs. Revoke by disabling or deleting an account in the vault.
 
+**Building without paid services:** See [docs/FREE_TIER_RESEARCH.md](docs/FREE_TIER_RESEARCH.md) for provisional notes on free tiers (Groq, Gemini, GitHub, Oracle Always Free, Cloudflare Workers, etc.) and how they map to PrivateMind.
+
 ---
 
 ## 1. Install

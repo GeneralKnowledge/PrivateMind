@@ -25,4 +25,4 @@ The executive should:
 
 ## For operators
 
-You do not need to implement the full roadmap upfront. Seed accounts, wake the agent, point it at the repo, and optionally skim `IDEAS_FOR_THE_AGENT.md`. After the floor is stable, **outcomes depend on what the agent prioritizes**, not on a central feature checklist.
+You do not need to implement the full roadmap upfront. Seed accounts, wake the agent, point it at the repo, and optionally skim `IDEAS_FOR_THE_AGENT.md` and `FREE_TIER_RESEARCH.md`. After the floor is stable, **outcomes depend on what the agent prioritizes**, not on a central feature checklist.

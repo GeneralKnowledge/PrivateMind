@@ -2,6 +2,8 @@
 
 PrivateMind’s operator bootstraps **trust floors** (vault, protected paths, no auto-merge to `main`, verification for workers). After that, **you** choose what to improve. This file is a suggestion box — not requirements, not tickets, not promises.
 
+**Free-tier stack research:** [FREE_TIER_RESEARCH.md](FREE_TIER_RESEARCH.md) — provisional notes on $0 services (LLM, git, VMs, webhooks). Validate limits before building on them.
+
 Pick what fits evidence and risk. Record limitations when something is out of scope. Prefer changes that come with tests and honest `docs/STATUS.md` updates.
 
 ## Tooling and sandbox
