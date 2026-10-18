@@ -506,6 +506,40 @@ def research_seed_catalog(ctx: click.Context, force: bool) -> None:
     click.echo(json.dumps(result, indent=2))
 
 
+@research.command("entitlements")
+@click.option("--class", "eligibility_class", default=None, type=click.Choice(["A", "B", "C"]))
+@click.option("--provider-id", default=None)
+@click.option("--entry-kind", default=None, type=click.Choice(["direct_provider", "aggregator", "historical"]))
+@click.pass_context
+def research_entitlements(
+    ctx: click.Context,
+    eligibility_class: str | None,
+    provider_id: str | None,
+    entry_kind: str | None,
+) -> None:
+    """List October 2026 source-backed entitlement rows (machine catalogue)."""
+    from privatemind.research.entitlements import list_entries, load_entitlements
+
+    data = load_entitlements()
+    rows = list_entries(
+        data,
+        eligibility_class=eligibility_class,
+        provider_id=provider_id,
+        entry_kind=entry_kind,
+    )
+    click.echo(
+        json.dumps(
+            {
+                "schema_version": data.get("schema_version"),
+                "retired": data.get("retired"),
+                "count": len(rows),
+                "entries": rows,
+            },
+            indent=2,
+        )
+    )
+
+
 @research.command("github-sources")
 @click.pass_context
 def research_github_sources(ctx: click.Context) -> None:

@@ -2,6 +2,8 @@
 
 Living backlog of **under-advertised** services to probe and judge. The agent updates this file and/or logs rows via `privatemind research candidate`. **Verdicts** in the CLI/memory are authoritative for what was actually tested.
 
+**Authoritative A/B/C:** [FREE_TIER_CATALOG_OCT2026.md](FREE_TIER_CATALOG_OCT2026.md) + [data/free_tier_entitlements.json](data/free_tier_entitlements.json).
+
 **LLM router catalog:** Provider keys in [data/free_tier_provider_catalog.json](data/free_tier_provider_catalog.json) align with multi-provider quota JSON (`schema_version` `2026-09-27`). Run `privatemind research seed-catalog` to copy them into memory as `pending`.
 
 ## LLM / inference (quota-router providers)
@@ -24,8 +26,9 @@ Living backlog of **under-advertised** services to probe and judge. The agent up
 | `openrouter-free` | llm | `:free` suffix models | pending |
 | `ovhcloud-ai-endpoints` | llm | **Anonymous** 2 RPM/IP — easy to miss | pending |
 | `siliconflow-free` | llm | Free model names without `Pro/` prefix | pending |
-| `sambanova-cloud` | llm | Listed on GitHub free-API repos; card rules disputed | pending — operator reports still working |
-| `unorouter-free` | llm | 130+ `:free` models; easy to miss vs direct upstream keys | pending — good spillover aggregator |
+| `sambanova-cloud` | llm | **Category C** — plans page requires payment method; not permanent free until probe OK | pending — do not promote to A without 402 check |
+| `unorouter-free` | llm | **Category C aggregator** — ~1 RPM per `:free` model | pending — probe; do not fan out upstreams |
+| `pollinations-ai` | llm | **Category C** — Pollen/auth; multi-modal | pending |
 
 **GitHub list recon:** `privatemind research github-sync` — see [FREE_TIER_RESEARCH.md](FREE_TIER_RESEARCH.md#github-as-the-living-source-of-lists).
 

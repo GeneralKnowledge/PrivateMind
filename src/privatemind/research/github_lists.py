@@ -13,6 +13,9 @@ from privatemind.research.provider_catalog import catalog_provider_ids, load_cat
 
 _SOURCES_REL = Path("docs/data/free_tier_github_sources.json")
 
+# Still appear in old GitHub README lists but must not be routed (see free_tier_entitlements.json retired).
+RETIRED_PROVIDER_IDS: frozenset[str] = frozenset({"github_models"})
+
 # Substrings matched case-insensitively in fetched markdown → catalog provider_id.
 PROVIDER_ALIASES: tuple[tuple[str, str], ...] = (
     ("aion labs", "aion_labs"),
@@ -45,6 +48,7 @@ PROVIDER_ALIASES: tuple[tuple[str, str], ...] = (
     ("sambanova cloud", "sambanova_cloud"),
     ("unorouter", "unorouter"),
     ("github models", "github_models"),
+    ("pollinations", "pollinations_ai"),
     ("cerebras", "cerebras"),
     ("fireworks", "fireworks_ai"),
     ("vercel ai gateway", "vercel_ai_gateway"),
@@ -164,13 +168,16 @@ def sync_github_sources(
             "section_headings_sample": markdown_section_titles(body)[:12] if body else [],
         }
 
-    in_github_not_catalog = sorted(all_mentioned - catalog_ids)
+    retired_mentioned = sorted(all_mentioned & RETIRED_PROVIDER_IDS)
+    active_mentioned = all_mentioned - RETIRED_PROVIDER_IDS
+    in_github_not_catalog = sorted(active_mentioned - catalog_ids)
 
     return {
         "schema_version_sources": meta.get("schema_version"),
         "fetched": fetch,
         "source_filter": source_id,
-        "mentioned_provider_ids": sorted(all_mentioned),
+        "mentioned_provider_ids": sorted(active_mentioned),
+        "retired_mentions_in_lists": retired_mentioned,
         "in_github_lists_not_in_catalog": in_github_not_catalog,
         "in_catalog_not_seen_in_github_scan": sorted(catalog_ids - all_mentioned),
         "by_source": by_source,

@@ -8,7 +8,9 @@ PrivateMind’s operator bootstraps **trust floors** (vault, protected paths, no
 
 **Probe before adopting:** `privatemind research probe-api` / `probe-nim`, then `research candidate --verdict useful|reject` with evidence. Use the **GPU spillover ladder** in the research doc — don’t run batch training on the brain VM.
 
-**GitHub lists:** Run `privatemind research github-sync` against [data/free_tier_github_sources.json](data/free_tier_github_sources.json); add catalog rows for gaps (e.g. SambaNova, UnoRouter), then verify with probes — never trust README limits without a dated check.
+**GitHub lists:** Run `privatemind research github-sync` against [data/free_tier_github_sources.json](data/free_tier_github_sources.json); add catalog rows for gaps, then verify with probes — never trust README limits without a dated check.
+
+**October 2026 catalogue:** Maintain [FREE_TIER_CATALOG_OCT2026.md](FREE_TIER_CATALOG_OCT2026.md) and [data/free_tier_entitlements.json](data/free_tier_entitlements.json) — Category A/B/C, official vs enforced limits, UK/card/commercial fields. Discovery via freellm.net is not proof. SambaNova = C until probe beats 402; UnoRouter = aggregator C; GitHub Models = retired.
 
 Pick what fits evidence and risk. Record limitations when something is out of scope. Prefer changes that come with tests and honest `docs/STATUS.md` updates.
 
