@@ -377,6 +377,88 @@ def workspaces_cmd(ctx: click.Context) -> None:
 
 @main.group()
 @click.pass_context
+def research(ctx: click.Context) -> None:
+    """Probe and catalog free / cheap-tier services (agent recon)."""
+
+
+@research.command("probe-api")
+@click.option("--base-url", required=True, help="OpenAI-compatible root, e.g. https://integrate.api.nvidia.com/v1")
+@click.option("--api-key-env", default=None, help="Env var name holding the API key (not printed)")
+@click.pass_context
+def research_probe_api(ctx: click.Context, base_url: str, api_key_env: str | None) -> None:
+    import os
+
+    from privatemind.research.probe import probe_openai_compatible
+
+    key = os.environ.get(api_key_env) if api_key_env else None
+    result = probe_openai_compatible(base_url=base_url, api_key=key)
+    click.echo(json.dumps(result, indent=2))
+
+
+@research.command("probe-nim")
+@click.option("--api-key-env", default="NVIDIA_API_KEY", show_default=True)
+@click.pass_context
+def research_probe_nim(ctx: click.Context, api_key_env: str) -> None:
+    """Probe NVIDIA hosted NIM catalog (integrate.api.nvidia.com)."""
+    import os
+
+    from privatemind.research.probe import probe_openai_compatible
+
+    key = os.environ.get(api_key_env) or os.environ.get("NGC_API_KEY")
+    if not key:
+        raise click.ClickException(f"Set {api_key_env} or NGC_API_KEY")
+    result = probe_openai_compatible(base_url="https://integrate.api.nvidia.com/v1", api_key=key)
+    click.echo(json.dumps(result, indent=2))
+
+
+@research.command("candidate")
+@click.argument("slug")
+@click.option("--name", required=True)
+@click.option("--category", required=True, help="llm | gpu/batch | host | webhook | other")
+@click.option("--docs-url", default="")
+@click.option("--notes", default="")
+@click.option(
+    "--verdict",
+    default="pending",
+    type=click.Choice(["pending", "useful", "reject"]),
+)
+@click.pass_context
+def research_candidate_log(
+    ctx: click.Context,
+    slug: str,
+    name: str,
+    category: str,
+    docs_url: str,
+    notes: str,
+    verdict: str,
+) -> None:
+    from privatemind.research.candidates import log_candidate
+
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    log_candidate(
+        core.memory,
+        slug=slug,
+        name=name,
+        category=category,
+        docs_url=docs_url,
+        notes=notes,
+        verdict=verdict,
+    )
+    click.echo(json.dumps({"logged": slug, "verdict": verdict}))
+
+
+@research.command("candidates")
+@click.option("--verdict", default=None, type=click.Choice(["pending", "useful", "reject"]))
+@click.pass_context
+def research_candidates_list(ctx: click.Context, verdict: str | None) -> None:
+    from privatemind.research.candidates import list_candidates
+
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    click.echo(json.dumps({"candidates": list_candidates(core.memory, verdict=verdict)}, indent=2))
+
+
+@main.group()
+@click.pass_context
 def tool_request(ctx: click.Context) -> None:
     """Queue and approve new tools (dedicated-server expansion)."""
 

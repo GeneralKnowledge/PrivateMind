@@ -87,6 +87,72 @@ These are **not** wired into PrivateMind by default. They suit **batch** work (t
 
 **Kaggle operational tips** (from [efficient GPU usage](https://www.kaggle.com/docs/efficient-gpu-usage)): stop interactive sessions when done (idle timeout burns quota), avoid redundant “Commit” batch runs, prefer **Kaggle API** to push notebook versions without leaving editors open.
 
+### GPU spillover ladder (don’t waste the good stuff)
+
+Use **persistent / high-trust** resources for the brain and workers; push **ephemeral GPU** work down this ladder:
+
+```text
+1. Local CPU + heuristic / small models     ← default executive planning
+2. Free LLM APIs (Groq, Gemini, NIM hosted) ← chat-scale inference, rate limits
+3. Batch GPU notebooks (Kaggle, Paperspace,   ← training, one-off eval, heavy tests
+   Colab, GCP codelab credits)
+4. Serverless GPU burst (Modal $30/mo, etc.)  ← short jobs, scale to zero
+5. Self-hosted NIM on a GPU box               ← when you already pay for the GPU
+6. Paid GPU                                   ← only after recording a limitation
+```
+
+**Google codelab credits** and **Paperspace** fit tier **3**: spin up, run the job, export artifacts, tear down — not `privatemind wake` 24/7.
+
+Track probes and verdicts: [`FREE_TIER_CANDIDATES.md`](FREE_TIER_CANDIDATES.md), CLI `privatemind research candidate`, `privatemind research probe-api`.
+
+---
+
+## NVIDIA NIM (Inference Microservices)
+
+NIM is easy to miss because it spans **hosted APIs**, **containers**, and **NGC** — not one “free tier” banner.
+
+| Mode | Cost (dev) | What you get | PrivateMind fit |
+|------|------------|--------------|-----------------|
+| **Hosted API** ([build.nvidia.com](https://build.nvidia.com/)) | Developer program; **OpenAI-compatible**; per-model **RPM** limits ([forums](https://forums.developer.nvidia.com/t/nim-rpm-rate-limit/378937)) | `https://integrate.api.nvidia.com/v1` + key from [settings](https://build.nvidia.com/settings) ([llms.txt](https://build.nvidia.com/llms.txt)) | **`account add-llm`** — same as Groq/Gemini |
+| **Downloadable NIM** (Docker/NGC) | Free for research/dev/test on **up to 16 GPUs**; you pay infra ([Run NIM Anywhere](https://docs.api.nvidia.com/nim/docs/run-anywhere)) | Self-host on worker GPU; OpenAI `/v1/chat/completions` on localhost | Pair as **worker** or sidecar; not the SQLite brain |
+| **Model-free NIM** | Same dev terms | Container pulls from HF/NGC/S3 ([docs](https://docs.nvidia.com/nim/large-language-models/latest/deployment/model-free-nim.html)) | Advanced worker image — operator setup |
+| **Hugging Face serverless NIM** | Selected models | HF API path per NVIDIA docs | Optional approved tool |
+| **NVIDIA LaunchPad** | Free browser access to HW for trials ([deployment FAQ](https://docs.api.nvidia.com/nim/docs/deployment)) | Short experiments | Manual; record outcome in research ledger |
+| **Production** | **NVIDIA AI Enterprise** license | Support, SLAs, PB branches | Out of scope for autonomous merge |
+
+**Hosted NIM in PrivateMind (operator):**
+
+```bash
+export NVIDIA_API_KEY="nvapi-..."   # from build.nvidia.com/settings
+privatemind research probe-nim      # lists sample model ids if key works
+privatemind account add-llm \
+  --name nvidia-nim \
+  --base-url https://integrate.api.nvidia.com/v1 \
+  --model meta/llama-3.1-8b-instruct \
+  --api-key "$NVIDIA_API_KEY"
+```
+
+Use **`privatemind research candidate`** to mark `nvidia-nim-hosted` as `useful` or `reject` with notes after a real task attempt.
+
+**Self-hosted NIM** belongs on a **GPU worker**, not inside the trusted core process: run the container on the body machine, point an approved tool or future worker op at `http://127.0.0.1:8000/v1` (mTLS in front if remote).
+
+---
+
+## More candidates (probe, don’t assume)
+
+| Service | Hidden value | Category |
+|---------|--------------|----------|
+| **[Modal](https://modal.com/pricing)** | **$30/mo** included compute on Starter; pay per second when idle off | gpu/batch |
+| **[Replicate](https://replicate.com/)** | Some free runs; mostly pay-per-use | gpu/batch |
+| **Hugging Face Inference** | Free tier on select models | llm/gpu |
+| **NVIDIA LaunchPad** | Trial enterprise GPUs in browser | gpu/batch |
+| **Lightning.ai / Lightning Studio** | Promotional GPU hours (check current) | gpu/batch |
+| **E2B / Daytona** | Dev sandbox credits (verify site) | sandbox |
+| **Google Colab** | Ephemeral GPU; queue at peak | gpu/batch |
+| **Vertex AI free trial** | Separate from Gemini API consumer tier | gpu/batch |
+
+Add rows to [FREE_TIER_CANDIDATES.md](FREE_TIER_CANDIDATES.md) when discovered.
+
 ---
 
 ## Cheap VPS (not free — often beats “free tier” UX)
@@ -144,6 +210,7 @@ When adding integrations, prefer **approved tools + sandbox** and document spend
 |----------|---------|-------------------|-----------|
 | **Local Ollama** | $0 | Hardware-bound | Best privacy; you operate the model |
 | **Groq** | $0 tier | Model-specific RPM/RPD/TPM ([docs](https://console.groq.com/docs/rate-limits)) | Fast; limits are org-wide |
+| **NVIDIA NIM (hosted)** | $0 dev | Per-model RPM; [integrate.api.nvidia.com](https://integrate.api.nvidia.com/v1) | Strong catalog; production needs AI Enterprise |
 | **Gemini API** | $0 tier | Model-specific; view in AI Studio | Strong models; free tier may use prompts for product improvement * |
 | **OpenRouter `:free`** | $0 models | 50/day (20/min) default; 1000/day after $10 credits ([limits](https://openrouter.ai/docs/api/reference/limits)) | Aggregator; provider throttling at peaks |
 | **Heuristic (built-in)** | $0 | Unlimited | Not general intelligence — good for tests |
