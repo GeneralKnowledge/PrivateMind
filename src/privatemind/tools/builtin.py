@@ -9,6 +9,7 @@ from privatemind.assistance.human import HumanAssistance
 from privatemind.executive.tasks import utc_now
 from privatemind.improvement.tracker import ImprovementTracker
 from privatemind.memory.store import MemoryStore
+from privatemind.tools.requests import ToolRequestStore
 from privatemind.tools.types import ToolResult
 from privatemind.trust import Provenance, TrustLevel
 
@@ -32,18 +33,25 @@ class ToolExecutor:
         git: "GitToolHandler | None" = None,
         repo: "RepoToolHandler | None" = None,
         improvements: ImprovementTracker | None = None,
+        tool_requests: ToolRequestStore | None = None,
+        auto_approve_tool_requests: bool = False,
+        on_tool_approved=None,
     ) -> None:
         self._memory = memory
         self._assistance = assistance
         self._git = git
         self._repo = repo
         self._improvements = improvements or ImprovementTracker(memory)
+        self._tool_requests = tool_requests
+        self._auto_approve = auto_approve_tool_requests
+        self._on_tool_approved = on_tool_approved
         self._allowed = {
             "remember": self._remember,
             "recall": self._recall,
             "compute_sha256": self._compute_sha256,
             "request_human_help": self._request_human_help,
             "record_limitation": self._record_limitation,
+            "request_tool": self._request_tool,
         }
 
     def list_tools(self) -> list[str]:
@@ -112,6 +120,31 @@ class ToolExecutor:
             status=str(arguments.get("status", "open")),
         )
         return ToolResult(ok=True, output={"recorded": True, "key": key})
+
+    def _request_tool(self, arguments: dict[str, Any], task_id: str | None = None) -> ToolResult:
+        if not self._tool_requests:
+            return ToolResult(ok=False, output=None, detail="Tool request store not configured")
+        tool_name = str(arguments["tool_name"])
+        purpose = str(arguments.get("purpose", ""))
+        justification = str(arguments.get("justification", ""))
+        risk_notes = str(arguments.get("risk_notes", ""))
+        req_id = self._tool_requests.create(
+            tool_name=tool_name,
+            purpose=purpose,
+            justification=justification,
+            risk_notes=risk_notes,
+            task_id=task_id,
+        )
+        status = "pending"
+        if self._auto_approve and self._on_tool_approved:
+            cap_id = self._on_tool_approved(req_id, tool_name, purpose, justification)
+            if cap_id:
+                status = "auto_approved"
+        return ToolResult(
+            ok=True,
+            output={"request_id": req_id, "status": status, "tool_name": tool_name},
+            detail="Operator grants tools on the dedicated server; see privatemind tool-request list",
+        )
 
     def _request_human_help(self, arguments: dict[str, Any], task_id: str | None = None) -> ToolResult:
         question = str(arguments["question"])

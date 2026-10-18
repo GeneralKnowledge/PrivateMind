@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     max_task_retries: int = 3
     task_step_timeout_seconds: int = 120
 
+    # Dedicated-server mode: auto-approve tool requests (lab only; default off)
+    auto_approve_tool_requests: bool = False
+
     @property
     def db_path(self) -> Path:
         return self.data_dir / self.db_name

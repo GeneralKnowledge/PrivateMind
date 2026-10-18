@@ -165,6 +165,20 @@ Legacy env vars (`PRIVATE_MIND_LLM_*`) still work if no LLM vault account is pre
 
 ---
 
+## Dedicated server (brain + body on one host)
+
+If you run PrivateMind on its **own server** and plan to **grant tools as it asks**, use the request queue (do not paste credentials into chat):
+
+```bash
+# Agent uses request_tool → you approve on the same machine
+privatemind tool-request list
+privatemind tool-request approve <request-id>
+```
+
+Lab-only friction removal: `PRIVATE_MIND_AUTO_APPROVE_TOOL_REQUESTS=1` (registers capabilities automatically; you still wire execution). See [docs/DEDICATED_SERVER.md](docs/DEDICATED_SERVER.md).
+
+---
+
 ## Architecture & security
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — trusted core vs future workers  
