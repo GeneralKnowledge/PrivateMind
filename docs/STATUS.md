@@ -85,7 +85,7 @@ Configure defaults: `PRIVATE_MIND_TOOL_SANDBOX_*`. Per-tool overrides via `tool-
 
 ## Agent-directed improvements
 
-Optional ideas live in [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md). Provisional free-tier service research: [FREE_TIER_RESEARCH.md](FREE_TIER_RESEARCH.md). Philosophy: [GRADUATED_AUTONOMY.md](GRADUATED_AUTONOMY.md).
+Optional ideas live in [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md). Provisional free-tier service research: [FREE_TIER_RESEARCH.md](FREE_TIER_RESEARCH.md), backlog [FREE_TIER_CANDIDATES.md](FREE_TIER_CANDIDATES.md), CLI `privatemind research probe-api|probe-nim|candidate`. Philosophy: [GRADUATED_AUTONOMY.md](GRADUATED_AUTONOMY.md).
 
 ## Next steps (for the agent or operator — not a central roadmap)
 

@@ -4,7 +4,9 @@ PrivateMind’s operator bootstraps **trust floors** (vault, protected paths, no
 
 **Free-tier stack research:** [FREE_TIER_RESEARCH.md](FREE_TIER_RESEARCH.md) — provisional notes on $0 services (LLM, git, VMs, webhooks). Validate limits before building on them.
 
-**Hidden / cheap infra:** Extend that doc when you discover under-advertised allowances (e.g. Kaggle **~30 GPU h/week**, GitHub Codespaces core-hours, IONOS/OVH/Netcup **intro VPS** vs Hetzner renewal pricing). Hunt in official **Limits** and **Always Free** pages, not marketing heroes only.
+**Hidden / cheap infra:** Extend [FREE_TIER_RESEARCH.md](FREE_TIER_RESEARCH.md) and [FREE_TIER_CANDIDATES.md](FREE_TIER_CANDIDATES.md) when you discover under-advertised allowances (Kaggle GPU hours, **NVIDIA NIM** hosted + self-hosted, Modal **$30/mo**, codelab credits, Paperspace, IONOS intro VPS, etc.).
+
+**Probe before adopting:** `privatemind research probe-api` / `probe-nim`, then `research candidate --verdict useful|reject` with evidence. Use the **GPU spillover ladder** in the research doc — don’t run batch training on the brain VM.
 
 Pick what fits evidence and risk. Record limitations when something is out of scope. Prefer changes that come with tests and honest `docs/STATUS.md` updates.
 
