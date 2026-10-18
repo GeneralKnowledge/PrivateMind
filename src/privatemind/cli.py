@@ -427,6 +427,43 @@ def research_probe_brave_search(ctx: click.Context, api_key_env: str, query: str
     click.echo(json.dumps(probe_brave_web_search(api_key=key, query=query), indent=2))
 
 
+@research.command("capability-domains")
+@click.pass_context
+def research_capability_domains(ctx: click.Context) -> None:
+    """Domains the agent should pursue (email, SMS, wallets, etc.)."""
+    from privatemind.research.capability_domains import load_capability_domains, list_domains
+
+    meta = load_capability_domains()
+    click.echo(
+        json.dumps(
+            {
+                "schema_version": meta.get("schema_version"),
+                "trust_ladder": meta.get("trust_ladder"),
+                "domains": list_domains(meta),
+                "mandate_doc": "docs/AGENT_CAPABILITY_MANDATE.md",
+            },
+            indent=2,
+        )
+    )
+
+
+@research.command("capability-gaps")
+@click.pass_context
+def research_capability_gaps(ctx: click.Context) -> None:
+    """Compare vault accounts to desired capability domains."""
+    from privatemind.vault.passphrase import resolve_passphrase
+    from privatemind.research.capability_domains import capability_gaps
+
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    vault = None
+    try:
+        core.unlock_vault(resolve_passphrase(None))
+        vault = core.vault
+    except Exception:  # noqa: BLE001
+        vault = None
+    click.echo(json.dumps(capability_gaps(vault), indent=2))
+
+
 @research.command("tool-entitlements")
 @click.option("--class", "eligibility_class", default=None, type=click.Choice(["A", "B", "C"]))
 @click.option("--tool-kind", default=None, type=click.Choice(["serp", "instant_answer", "serp_agent", "neural_search", "knowledge_lookup"]))

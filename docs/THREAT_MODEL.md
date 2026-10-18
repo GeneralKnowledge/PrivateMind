@@ -7,7 +7,7 @@ This document covers v0.1 (local trusted core) and stated assumptions for upcomi
 ## Assets to protect
 
 1. **Private runtime state** — SQLite database under `~/.privatemind` (tasks, memory, audit).
-2. **Credentials** — API keys and SSH private keys in encrypted `credentials.vault`; env vars are legacy fallback only.
+2. **Credentials** — API keys, SSH keys, and (when provisioned) **email/SMS/payment** secrets in encrypted `credentials.vault`; env vars are legacy fallback only.
 3. **Executive integrity** — task states, retry policy, human-gating decisions.
 4. **Trust policies** — tool allowlists, future worker authorization (not yet enforced over network).
 
@@ -42,6 +42,7 @@ This document covers v0.1 (local trusted core) and stated assumptions for upcomi
 - Remote attestation
 - Proof of correct ML inference
 - Automatic merge to production
+- **Autonomous acquisition** of bank accounts, mainnet crypto transfers, or the operator’s personal email/phone — agent requests; human provisions ([AGENT_CAPABILITY_MANDATE.md](AGENT_CAPABILITY_MANDATE.md))
 
 ## Security assumptions
 

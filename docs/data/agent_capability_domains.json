@@ -1,0 +1,145 @@
+{
+  "schema_version": "2026-10-18",
+  "title": "Capability domains the executive should pursue autonomously",
+  "operator_note": "The agent must not acquire email, phone, wallet, or bank access without explicit human provisioning into the vault. This file defines what to want and how to ask — not permission to self-signup with stolen identity.",
+  "trust_ladder": [
+    {
+      "level": 0,
+      "name": "discover_and_document",
+      "agent_may": "Research free tiers, APIs, ToS; log candidates; draft operator requests"
+    },
+    {
+      "level": 1,
+      "name": "dedicated_identity",
+      "agent_may": "Use operator-provisioned accounts (agent-only email/phone) via approved tools"
+    },
+    {
+      "level": 2,
+      "name": "sign_and_send",
+      "agent_may": "Send email/SMS, sign messages with provisioned keys — with rate limits and audit"
+    },
+    {
+      "level": 3,
+      "name": "value_movement",
+      "agent_may": "Crypto/fiat only with human-approved policies, separate vault entries, verifiers on outbound tx"
+    }
+  ],
+  "domains": [
+    {
+      "id": "inference_llm",
+      "label": "LLM / planning",
+      "priority": "critical",
+      "vault_kind_today": "llm",
+      "vault_kind_planned": null,
+      "trust_level_required": 1,
+      "discovery": ["research discover", "research entitlements --class A"],
+      "examples": ["Groq", "Brave Answers", "local Ollama"]
+    },
+    {
+      "id": "web_search",
+      "label": "Web search & grounding",
+      "priority": "high",
+      "vault_kind_today": null,
+      "vault_kind_planned": "search_api",
+      "trust_level_required": 1,
+      "discovery": ["research tool-entitlements", "research probe-brave-search"],
+      "examples": ["Brave SERP", "OpenSERP on worker"]
+    },
+    {
+      "id": "email_outbound",
+      "label": "Outbound email (agent identity)",
+      "priority": "high",
+      "vault_kind_today": null,
+      "vault_kind_planned": "email",
+      "trust_level_required": 2,
+      "discovery": [
+        "Research: Cloudflare Email Routing + Workers, Resend free tier, SendGrid trial, Migadu, agent-only Gmail/Outlook forward"
+      ],
+      "operator_deliverable": "Dedicated address (e.g. agent@yourdomain) + SMTP/API creds in vault",
+      "examples": ["Notify human", "Receive provider confirmations", "Password-reset flows you cannot complete alone"]
+    },
+    {
+      "id": "email_inbound",
+      "label": "Inbound email (read/parsing)",
+      "priority": "high",
+      "vault_kind_today": null,
+      "vault_kind_planned": "email",
+      "trust_level_required": 2,
+      "discovery": ["IMAP OAuth apps, Cloudflare forwarding to webhook, minimal inbox for 2FA mails"],
+      "operator_deliverable": "Read-only mailbox or forward-to-webhook; never the operator's personal inbox",
+      "examples": ["API key emails", "GitHub notifications", "Provider quota alerts"]
+    },
+    {
+      "id": "phone_sms",
+      "label": "Phone number / SMS",
+      "priority": "high",
+      "vault_kind_today": null,
+      "vault_kind_planned": "phone_sms",
+      "trust_level_required": 2,
+      "discovery": [
+        "Twilio trial, Telnyx, Vonage, UK: compare virtual number + SMS API; some LLM APIs require phone verify — prefer operator-owned number"
+      ],
+      "operator_deliverable": "Agent-only virtual number; SMS webhook or API key in vault",
+      "examples": ["2FA for services", "SMS alerts to operator", "Provider phone verification"]
+    },
+    {
+      "id": "voice_otp",
+      "label": "Voice / OTP relay (last resort)",
+      "priority": "medium",
+      "vault_kind_today": null,
+      "vault_kind_planned": "phone_sms",
+      "trust_level_required": 2,
+      "discovery": ["Same vendors as SMS; document when voice required"],
+      "operator_deliverable": "Explicit opt-in; log every OTP request in audit",
+      "examples": ["Banking or gov ID flows — usually human-only"]
+    },
+    {
+      "id": "crypto_wallet",
+      "label": "Crypto wallet (non-custodial or API)",
+      "priority": "medium",
+      "vault_kind_today": null,
+      "vault_kind_planned": "crypto_wallet",
+      "trust_level_required": 3,
+      "discovery": [
+        "Chain-specific: hot wallet key in vault vs custodial API (Coinbase Commerce read-only vs signing)"
+      ],
+      "operator_deliverable": "Separate wallet with spend caps; never co-mingle with human savings",
+      "examples": ["Pay for API credits", "Receive testnet funds", "On-chain attestations"],
+      "never_automate": ["Signing mainnet txs without human-approved policy + verifier"]
+    },
+    {
+      "id": "bank_fiat",
+      "label": "Bank / fiat payments",
+      "priority": "low",
+      "vault_kind_today": null,
+      "vault_kind_planned": "payment_fiat",
+      "trust_level_required": 3,
+      "discovery": [
+        "Open banking (UK/EU) where available; business-only accounts; virtual cards with limits"
+      ],
+      "operator_deliverable": "Separate business account or virtual card; hard spending ceiling; human merge for policy changes",
+      "examples": ["Eventually: pay cloud invoices within budget"],
+      "never_automate": ["Opening accounts", "Increasing limits", "Wire transfers without human approval"]
+    },
+    {
+      "id": "git_ssh",
+      "label": "Git / SSH",
+      "priority": "critical",
+      "vault_kind_today": "github",
+      "vault_kind_planned": null,
+      "trust_level_required": 1,
+      "discovery": ["GitHub free tier docs"],
+      "examples": ["Self-improvement branches"]
+    },
+    {
+      "id": "remote_compute",
+      "label": "Remote compute (SSH workers)",
+      "priority": "medium",
+      "vault_kind_today": "ssh_host",
+      "vault_kind_planned": null,
+      "trust_level_required": 1,
+      "discovery": ["FREE_TIER_RESEARCH GPU spillover"],
+      "examples": ["Body server", "Oracle always-free ARM"]
+    }
+  ]
+}
