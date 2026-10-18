@@ -59,6 +59,24 @@ Remote mTLS: `tests/test_worker_mtls.py`.
 - Autonomous production promotion
 - Production-grade multi-tenant isolation beyond contributor scoping
 
-## Next milestone
+## Operational hardening (post-M5)
 
-Operational hardening: dynamic tool loading after approval, `gh pr create` integration, production PKI.
+| Feature | Evidence |
+|---------|----------|
+| Protected-path manifest (writes/commits) | `security/protected_manifest.py`, `test_protected_path_blocks_write` |
+| Draft PR via `gh` after self-improvement push | `integrations/gh_cli.py`, workflow submit phase |
+| Approved tool subprocess runner | `tools/approved_runner.py`, `tool-request approve --runner-arg` |
+| Memory trust promotion CLI | `memory promote`, `test_memory_promotion_transitions` |
+| Worker health in setup-check / status | `activation/worker_health.py` |
+| Reputation-aware scheduling sort | `pairing_store.worker_reputation` |
+| Pluggable worker verifiers | `worker/verifier_registry.py` |
+| Assistance webhook | `PRIVATE_MIND_ASSISTANCE_WEBHOOK_URL` |
+
+## Next steps (not yet implemented)
+
+- Production PKI rotation / cert expiry monitoring (beyond lab `pki-init`)
+- Strong sandbox for approved tools (network/fs cgroups, separate UID)
+- Sybil-resistant contributor policies beyond reputation sorting
+- Autonomous promotion remains out of scope — human merge to main
+- Optional Slack-native assistance (webhook is generic JSON today)
+- Register additional worker verifiers for non-hash compute jobs with deterministic checks

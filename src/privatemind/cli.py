@@ -92,7 +92,13 @@ def setup_check_cmd(ctx: click.Context, passphrase: str | None) -> None:
         except Exception as exc:  # noqa: BLE001
             click.echo(json.dumps({"error": str(exc), "hint": "Set PRIVATE_MIND_VAULT_PASSPHRASE"}))
             return
-    click.echo(json.dumps(core.wake.check(), indent=2))
+    from privatemind.activation.worker_health import merge_setup_report, worker_network_report
+
+    readiness = core.wake.check()
+    worker_report = None
+    if core.core_identity:
+        worker_report = worker_network_report(core.pairing)
+    click.echo(json.dumps(merge_setup_report(readiness, worker_report), indent=2))
 
 
 @main.command("wake")
@@ -147,6 +153,11 @@ def status_cmd(ctx: click.Context) -> None:
     tasks = core.tasks.list_tasks()
     checkpoint = core.tasks.get_checkpoint()
     pending = core.assistance.list_pending()
+    from privatemind.activation.worker_health import worker_network_report
+
+    worker_report = worker_network_report(core.pairing) if core.core_identity else None
+    pending_tools = core.tool_requests.list_pending()
+    caps = core.capabilities.list_enabled()
     payload = {
         "db_path": str(core.settings.db_path),
         "checkpoint": checkpoint,
@@ -162,6 +173,10 @@ def status_cmd(ctx: click.Context) -> None:
             for t in tasks
         ],
         "pending_human_requests": pending,
+        "pending_tool_requests": len(pending_tools),
+        "enabled_capabilities": len(caps),
+        "worker_network": worker_report,
+        "lifecycle": core.memory.get("system", "lifecycle.state"),
     }
     click.echo(json.dumps(payload, indent=2))
 
@@ -178,14 +193,63 @@ def task_cmd(ctx: click.Context, title: str, description: str, priority: int) ->
     click.echo(json.dumps({"id": task.id, "title": task.title, "state": task.state.value}))
 
 
-@main.command("memory-search")
+@main.group("memory")
+@click.pass_context
+def memory_group(ctx: click.Context) -> None:
+    """Search and promote memory trust levels."""
+
+
+def _memory_search(ctx: click.Context, query: str | None, kind: str | None) -> None:
+    core = _core(ctx.obj["data_dir"])
+    rows = core.memory.search(query=query, kind=kind)
+    click.echo(json.dumps(rows, indent=2))
+
+
+@memory_group.command("search")
 @click.option("--query", default=None)
 @click.option("--kind", default=None)
 @click.pass_context
 def memory_search_cmd(ctx: click.Context, query: str | None, kind: str | None) -> None:
+    _memory_search(ctx, query, kind)
+
+
+@memory_group.command("promote")
+@click.option("--kind", required=True)
+@click.option("--key", required=True)
+@click.option(
+    "--level",
+    "target_level",
+    required=True,
+    type=click.Choice(["partially_verified", "verified", "rejected"]),
+)
+@click.option("--evidence", required=True, help="Why this promotion is justified")
+@click.pass_context
+def memory_promote_cmd(
+    ctx: click.Context,
+    kind: str,
+    key: str,
+    target_level: str,
+    evidence: str,
+) -> None:
+    from privatemind.memory.promotion import promote_memory_trust
+    from privatemind.trust import TrustLevel
+
     core = _core(ctx.obj["data_dir"])
-    rows = core.memory.search(query=query, kind=kind)
-    click.echo(json.dumps(rows, indent=2))
+    level = TrustLevel(target_level)
+    result = promote_memory_trust(core.memory, kind=kind, key=key, target_level=level, evidence=evidence)
+    if not result.get("ok"):
+        raise click.ClickException(str(result.get("error")))
+    core.audit.record("memory_promoted", **result)
+    click.echo(json.dumps(result, indent=2))
+
+
+@main.command("memory-search")
+@click.option("--query", default=None)
+@click.option("--kind", default=None)
+@click.pass_context
+def memory_search_legacy(ctx: click.Context, query: str | None, kind: str | None) -> None:
+    """Deprecated alias for `privatemind memory search`."""
+    _memory_search(ctx, query, kind)
 
 
 @main.command("help-request")
@@ -275,6 +339,15 @@ def improve_run_local(ctx: click.Context, workspace: str, from_path: Path | None
     click.echo(json.dumps({"task_id": task.id, "steps": results}, indent=2))
 
 
+@improve.command("limitations")
+@click.pass_context
+def improve_limitations_cmd(ctx: click.Context) -> None:
+    """List recorded limitations (trusted-core ledger)."""
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    rows = core.memory.search(kind="limitation", limit=100)
+    click.echo(json.dumps({"limitations": rows}, indent=2))
+
+
 @improve.command("clone")
 @click.option("--repo-ssh-url", required=True)
 @click.option("--workspace", required=True)
@@ -319,8 +392,19 @@ def tool_request_list(ctx: click.Context) -> None:
 @tool_request.command("approve")
 @click.argument("request_id")
 @click.option("--capability-id", default=None, help="Defaults to tool.requested.<name>")
+@click.option(
+    "--runner-arg",
+    "runner_argv",
+    multiple=True,
+    help="Subprocess argv for approved tool (receives JSON on stdin). Example: --runner-arg python3 --runner-arg -c --runner-arg script",
+)
 @click.pass_context
-def tool_request_approve(ctx: click.Context, request_id: str, capability_id: str | None) -> None:
+def tool_request_approve(
+    ctx: click.Context,
+    request_id: str,
+    capability_id: str | None,
+    runner_argv: tuple[str, ...],
+) -> None:
     from privatemind.capabilities.registry import Capability
 
     core = _core(ctx.obj["data_dir"], unlock_vault=False)
@@ -328,6 +412,9 @@ def tool_request_approve(ctx: click.Context, request_id: str, capability_id: str
     if not row:
         raise click.ClickException("Request not found")
     cap_id = capability_id or f"tool.requested.{row['tool_name'].replace(' ', '_')[:40]}"
+    limits: dict = {"granted_via": "tool_request", "request_id": request_id}
+    if runner_argv:
+        limits["runner_argv"] = list(runner_argv)
     core.capabilities.register(
         Capability(
             id=cap_id,
@@ -335,8 +422,8 @@ def tool_request_approve(ctx: click.Context, request_id: str, capability_id: str
             kind="tool",
             description=row["purpose"],
             operations=[row["tool_name"]],
-            limits={"granted_via": "tool_request", "request_id": request_id},
-            trust={"runs_locally": True, "operator_approved": True},
+            limits=limits,
+            trust={"runs_locally": True, "operator_approved": True, "isolation": "subprocess"},
             enabled=True,
         )
     )

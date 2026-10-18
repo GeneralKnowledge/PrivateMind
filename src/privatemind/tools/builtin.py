@@ -9,6 +9,8 @@ from privatemind.assistance.human import HumanAssistance
 from privatemind.executive.tasks import utc_now
 from privatemind.improvement.tracker import ImprovementTracker
 from privatemind.memory.store import MemoryStore
+from privatemind.capabilities.registry import CapabilityRegistry
+from privatemind.tools.approved_runner import ApprovedToolRunner
 from privatemind.tools.requests import ToolRequestStore
 from privatemind.tools.types import ToolResult
 from privatemind.trust import Provenance, TrustLevel
@@ -38,6 +40,7 @@ class ToolExecutor:
         auto_approve_tool_requests: bool = False,
         on_tool_approved=None,
         worker: "WorkerToolHandler | None" = None,
+        capabilities: CapabilityRegistry | None = None,
     ) -> None:
         self._memory = memory
         self._assistance = assistance
@@ -48,6 +51,8 @@ class ToolExecutor:
         self._auto_approve = auto_approve_tool_requests
         self._on_tool_approved = on_tool_approved
         self._worker = worker
+        self._capabilities = capabilities
+        self._approved_runner = ApprovedToolRunner()
         self._allowed = {
             "remember": self._remember,
             "recall": self._recall,
@@ -74,6 +79,14 @@ class ToolExecutor:
             return self._repo.invoke(name, arguments)
         if self._git and name in self._git.tool_names():
             return self._git.invoke(name, arguments, task_id=task_id)
+        if self._capabilities:
+            approved_caps = [
+                c
+                for c in self._capabilities.find_for_operation(name)
+                if c.kind == "tool" and c.id.startswith("tool.requested.")
+            ]
+            if approved_caps:
+                return self._approved_runner.invoke(approved_caps[0], name, arguments, task_id=task_id)
         if name not in self._allowed:
             return ToolResult(ok=False, output=None, detail=f"Tool not allowed: {name}")
         try:

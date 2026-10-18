@@ -20,9 +20,9 @@ def verify_compute_sha256(body: dict[str, Any], result: dict[str, Any]) -> bool:
 
 
 def verify_correctness(operation: str, body: dict[str, Any], result: dict[str, Any]) -> bool:
-    if operation == "compute_sha256":
-        return verify_compute_sha256(body, result)
-    return False
+    from privatemind.worker.verifier_registry import verify_operation
+
+    return verify_operation(operation, body, result)
 
 
 def validate_job_result_payload(payload: dict[str, Any]) -> tuple[bool, list[str]]:
