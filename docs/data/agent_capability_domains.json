@@ -143,16 +143,27 @@
       "examples": ["Body server", "Oracle always-free ARM"]
     },
     {
-      "id": "egress_api_proxy",
-      "label": "API egress via worker/proxy (IP & region)",
+      "id": "donor_server_key_affinity",
+      "label": "Donor server runs its donated API keys (sharded egress)",
       "priority": "medium",
       "vault_kind_today": null,
       "vault_kind_planned": null,
       "trust_level_required": 1,
-      "discovery": ["docs/AGENT_ARCHITECTURE_IDEAS.md — forward proxy, regional exit, cache GETs, mTLS brain→body→API"],
-      "operator_deliverable": "Optional: approve a body/VPS as outbound proxy; allowlist target hostnames",
-      "examples": ["Brave/Groq see worker IP", "EU exit for sovereignty APIs"],
-      "never_automate": ["IP rotation to evade abuse bans or ToS"]
+      "discovery": [
+        "docs/AGENT_ARCHITECTURE_IDEAS.md — key affinity, keys movable vault↔donor, donor churn / redundancy"
+      ],
+      "operator_deliverable": "Contributor pairs worker; scoped keys per machine; scheduler routes by provider tag; operator fallbacks where critical",
+      "examples": [
+        "Donor A: Groq only",
+        "Donor B: Brave only",
+        "Key moved from vault to empty donor; moved back when donor withdraws",
+        "Second provider or operator key when sole donor is only path"
+      ],
+      "never_automate": [
+        "One server holding every API key",
+        "Egress IP rotation for ban evasion",
+        "Critical capability with no fallback beyond a single voluntary donor"
+      ]
     }
   ]
 }

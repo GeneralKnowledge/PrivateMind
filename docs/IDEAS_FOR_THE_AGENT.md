@@ -30,7 +30,7 @@ Think **out of the box**: the bottleneck is often not another LLM but **live dat
 
 ## Architecture patterns (consider — do not wait for operator)
 
-See **[AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md)** — e.g. **servers as API egress proxies** so cloud providers see worker IPs not the brain; regional exits, caching GET proxies, mTLS brain→body→API, queue coordinators. Evaluate, document, request approval; respect ToS.
+See **[AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md)** — e.g. **contributors donate a server + keys**; that server **runs those APIs** (key affinity); **keys move freely** (vault ↔ donor); **no one machine runs every provider**; stable donor IPs (reject **IP** rotation for ban evasion only). **Do not over-rely** on shared donors — they may rotate keys or leave anytime; keep fallbacks. You choose routing/scheduling; respect ToS.
 
 ## Tooling and sandbox
 
