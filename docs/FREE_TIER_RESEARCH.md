@@ -2,6 +2,8 @@
 
 **Status:** Research notes for operators and for the agent — not integration commitments. Free tiers **change often**; confirm limits in each vendor console before relying on them. Last reviewed: **2026-10-18**.
 
+Many valuable allowances are **under-documented** (buried in product docs, notebook UI, or intro pricing). The agent should **actively hunt** for these — see [How to research hidden / cheap options](#how-to-research-hidden--cheap-options) — and append verified rows here with source links and dates.
+
 PrivateMind is designed so the **trusted core stays on your hardware** (or a VM you control) while optional cloud services supply inference, git hosting, CI, and webhooks. The goal here is **$0 incremental spend** at small scale, stacking free tiers until something is genuinely worth paying for.
 
 ---
@@ -66,6 +68,73 @@ Oracle marketing pages sometimes still mention higher ARM quotas; **trust the cu
 | Neon / Supabase / Turso | Generous dev free tiers | **Not required** — core uses SQLite; use only if the agent chooses to integrate |
 
 Sources: [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions), [Cloudflare developer pricing](https://www.cloudflare.com/plans/developer-platform-pricing/).
+
+---
+
+## Under-advertised free compute (easy to miss)
+
+These are **not** wired into PrivateMind by default. They suit **batch** work (training, heavy tests, one-off experiments) more than a 24/7 brain. Check the **account quota UI** — marketing pages often omit the numbers.
+
+| Service | What people miss | Typical allowance (verify live) | PrivateMind angle |
+|---------|------------------|--------------------------------|-------------------|
+| **[Kaggle Notebooks](https://www.kaggle.com/docs/efficient-gpu-usage)** | GPU quota is in the **notebook editor / profile**, not the homepage | **~30 GPU hours/week** (P100 class); **floating quota** can exceed 30h when capacity allows; resets **Saturday 00:00 UTC**; **20 TPU hours/week** ([TPU docs](https://www.kaggle.com/docs/tpu)) | Approved tool or manual: run training notebooks, export artifacts via Kaggle API; **not** a substitute for persistent `worker serve` |
+| **[Google Colab](https://colab.research.google.com/)** | Free tier exists but limits are **session-based** and undocumented in one table | Ephemeral GPU/TPU when available; queues at peak | Same — exploratory only |
+| **Kaggle + Colab Pro link** | [2025 blog](https://www.kaggle.com/blog/level-up-your-compute-more-gpu-hours-on-kaggle-wit): linked Colab Pro adds **+15 GPU h/week** on Kaggle; Pro+ **+30** (paid Colab; Kaggle portion still “free” add-on) | Only if operator already pays for Colab | Optional operator boost, not $0 |
+| **[Google Cloud codelab credits](https://codelabs.developers.google.com/codelabs/cloud-codelab-credits)** | **No card** learning credits for codelabs | Often **~$300 equivalent for 6 months** on specific redemption flows | Prototype GCP tooling; stay in always-free SKUs where possible |
+| **[Paperspace Free GPU](https://www.paperspace.com/)** | Free Gradient tier is easy to overlook | Free GPU notebooks (hardware tier varies); sessions often **auto-stop after ~12h** | Batch ML; watch ToS for automation |
+| **[GitHub Codespaces](https://docs.github.com/en/billing/reference/product-usage-included)** | Listed under **product usage included**, not “Pricing hero” | Personal Free: **120 core-hours/month**, **15 GB storage** (2026 docs) | Debug a branch in browser; don’t store vault there |
+| **Oracle / GCP “Always Free”** | Hidden in **Always Free Resources** appendix, not signup wizard | See Tier 2 above | Persistent low-cost VM if you secure capacity |
+
+**Kaggle operational tips** (from [efficient GPU usage](https://www.kaggle.com/docs/efficient-gpu-usage)): stop interactive sessions when done (idle timeout burns quota), avoid redundant “Commit” batch runs, prefer **Kaggle API** to push notebook versions without leaving editors open.
+
+---
+
+## Cheap VPS (not free — often beats “free tier” UX)
+
+When **€1–4/month** is acceptable, European VPS can be **cheaper than brand-name “cloud”** and simpler than fighting Oracle capacity. **Intro prices lie** — always screenshot **renewal** and **setup fees** (e.g. IONOS XS sometimes carries a one-time setup charge in some regions).
+
+| Provider | Why it’s under-discussed vs Hetzner | Typical entry (verify checkout) | Tradeoff vs Hetzner |
+|----------|-------------------------------------|----------------------------------|---------------------|
+| **[IONOS VPS](https://www.ionos.com/server/vps)** | Heavily **promo-priced** (€1/$2 first term); includes SSL, DDoS, “unlimited” traffic in ads | **~€1–2/mo intro**, **VPS S ~€4** with more NVMe; renewal often **much higher** | Weaker perf/$ at renewal; fine for **single brain** if you watch renewal |
+| **[OVH VPS](https://www.ovhcloud.com/)** | “Starter” deals (~€1) appear in forums; not the default Hetzner recommendation | Sub-€2 promos in EU; standard tiers scale up | Support/varies by line (So you Start vs Cloud) |
+| **[Netcup](https://www.netcup.com/en/server/vps)** | Less mindshare than Hetzner in English dev Twitter | **~€3.35/mo** class (2 vCPU / 2 GB) in comparison tables | Good price; check API/automation needs |
+| **[Hetzner Cloud](https://www.hetzner.com/cloud)** | **Default** recommendation — not hidden, but **baseline** for value | **~€3.79/mo** (2 vCPU / 4 GB ARM or CX22) | Best perf/flex for developers; hourly billing |
+| **[Scaleway](https://www.scaleway.com/en/)** | Stardust / legacy cheap instances | Occasional **€0.01** or very low tiers (capacity-limited) | Good EU option; read instance lifecycle docs |
+
+**PrivateMind fit:** A **€2 IONOS or €4 Hetzner** box is often a better **dedicated server** than $0 Oracle if you need reliable `privatemind wake` + `worker serve` without “out of capacity.” Pair with **free** GitHub + Groq/Gemini for inference — total stack still **single-digit euros**.
+
+**Hetzner vs IONOS (rule of thumb):** Hetzner wins **raw perf, hourly billing, terraform**; IONOS wins **lowest sticker price and bundled beginner extras** — compare **renewal**, not homepage hero price ([comparison example](https://eurohosting.org/compare/hetzner-vs-ionos)).
+
+---
+
+## Startup / trial credits (time-limited, often hidden in “Programs”)
+
+Worth cataloguing when the agent researches; **not** $0 forever:
+
+| Program | Rough credit | Catch |
+|---------|--------------|--------|
+| Google Cloud Free Trial | **$300 / 90 days** | Card usually required; must not exceed always-free accidentally |
+| Google for Startups / pre-funded | **~$2k** tiers reported in indie guides ([example roundup](https://klymentiev.com/blog/free-cloud-credits-developers)) | Eligibility forms |
+| AWS Activate Founders | **~$1k** | Application |
+| Microsoft Founders Hub | **~$1k–5k** | Application |
+| IONOS / UpCloud / Civo trials | **€200–500** for ~30 days ([summary](https://aifree.dev/compare/free-cloud-credits)) | One-time; card |
+
+Record **expiry** in limitation ledger when an operator burns these for a migration spike.
+
+---
+
+## How to research hidden / cheap options
+
+The agent (or operator) should treat this as **ongoing recon**, not a one-time README:
+
+1. **Read vendor “Limits”, “Product usage included”, “Always Free Resources”** — not landing-page pricing alone (Kaggle GPU hours live in [efficient-gpu-usage](https://www.kaggle.com/docs/efficient-gpu-usage); GitHub Codespaces in [product usage included](https://docs.github.com/en/billing/reference/product-usage-included)).
+2. **Check account settings UI** — quotas (Kaggle profile, Groq Limits page, Gemini AI Studio) override stale blog posts.
+3. **Compare renewal vs intro** for VPS/hosting (IONOS, OVH, Namecheap-style promos).
+4. **Search** `"floating quota"`, `"always free"`, `site:docs.*.com included` — then **verify** on official docs dated within the last year.
+5. **Record** findings here: service, allowance, link, `verified_on` date, and whether it fits **brain**, **worker**, **batch**, or **LLM only**.
+6. **Do not** store payment cards or bypass ToS in automation — propose operator signup steps in limitations if blocked.
+
+When adding integrations, prefer **approved tools + sandbox** and document spend caps in `record_limitation`.
 
 ---
 

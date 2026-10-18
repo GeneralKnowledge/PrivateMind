@@ -4,6 +4,8 @@ PrivateMind’s operator bootstraps **trust floors** (vault, protected paths, no
 
 **Free-tier stack research:** [FREE_TIER_RESEARCH.md](FREE_TIER_RESEARCH.md) — provisional notes on $0 services (LLM, git, VMs, webhooks). Validate limits before building on them.
 
+**Hidden / cheap infra:** Extend that doc when you discover under-advertised allowances (e.g. Kaggle **~30 GPU h/week**, GitHub Codespaces core-hours, IONOS/OVH/Netcup **intro VPS** vs Hetzner renewal pricing). Hunt in official **Limits** and **Always Free** pages, not marketing heroes only.
+
 Pick what fits evidence and risk. Record limitations when something is out of scope. Prefer changes that come with tests and honest `docs/STATUS.md` updates.
 
 ## Tooling and sandbox
