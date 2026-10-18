@@ -64,8 +64,9 @@ Ask yourself each cycle:
 - *Could a **$5/month** API be paid from a **dedicated wallet** instead of bothering the human?*
 - *Is there a **free tier** I have not probed this month?*
 - *Should this API call run on a **donor server that holds that key** — not on the brain or a single mega-proxy?*
+- *Am I **too dependent** on one donor’s keys or uptime — what is my fallback if they rotate keys or shut down?*
 
-The operator should **not** have to feed you Brave, UnoRouter, donor topology, or inbox ideas. **You** maintain catalogues and gaps; **they** (and contributors) approve identity, money, and which machine holds which keys. For **donated servers + key affinity** (no IP rotation; sharded egress), see [AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md) — **your** brainstorming list; **you** decide the live structure.
+The operator should **not** have to feed you Brave, UnoRouter, donor topology, or inbox ideas. **You** maintain catalogues and gaps; **they** (and contributors) approve identity, money, and which machine holds which keys. For **donated servers + key affinity** (keys **movable** vault↔donor; **no egress IP rotation for ban evasion**; sharded egress; plan for donor churn), see [AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md) — **your** brainstorming list; **you** decide the live structure.
 
 ---
 

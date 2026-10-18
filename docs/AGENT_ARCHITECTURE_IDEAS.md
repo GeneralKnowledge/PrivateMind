@@ -4,7 +4,7 @@
 
 **You choose the structure.** These rows are prompts for thinking, not a fixed topology.
 
-**Floors still apply:** vault on the brain, verified workers, no auto-merge to `main`, respect provider **ToS** and **law**. This is about **sharding work and secrets across donated capacity**, not hiding abuse or rotating IPs to dodge bans.
+**Floors still apply:** vault on the brain, verified workers, no auto-merge to `main`, respect provider **ToS** and **law**. This is about **sharding work and secrets across donated capacity**. **Keys and secrets should stay movable** (vault ↔ donor, donor ↔ donor). What is **not** in scope is **rotating egress IPs** to dodge abuse bans or ToS — stable donor IPs are normal; moving keys is normal.
 
 ---
 
@@ -16,9 +16,9 @@ A **contributor donates a machine** and optionally **API keys** for specific ser
 |------|-----------------|-------|
 | **Key affinity** | Groq key on donor server A → only A calls Groq; quotas and IP limits stay isolated | Map in worker/contributor metadata (operation or provider tags) |
 | **No monolith egress** | Avoid one “proxy box” running **every** API — spreads load, blast radius, and rate limits | Scheduler picks worker with matching keys + lease |
-| **Keys movable** | Same key can live in the **central vault** (brain) *or* be **provisioned onto a server that had no keys** | Migration is operator/contributor action; audit the move |
+| **Keys movable (expected)** | Keys live in the **central vault** *or* on a donor; **move freely** when topology changes — including onto a server that had no keys | Operator/contributor action; audit moves; affinity is *where calls run now*, not a permanent lock |
 | **Server without keys** | Donor adds compute first; operator later pushes scoped secrets for one provider | Good for untrusted or fresh VPS before trust rises |
-| **Static IP is fine** | **No IP rotation** — each donor has a stable egress; you route traffic to the right donor | Rotation is out of scope unless operator explicitly asks |
+| **Stable donor IP** | Each donor has a **fixed egress**; you **route** jobs to the donor that holds the key | Do **not** treat IP pool hopping as a fix for throttling or bans |
 
 This extends the existing **worker / contributor / lease** story ([WORKER_PROTOCOL.md](WORKER_PROTOCOL.md), M5 scheduling): think **provider-scoped workers**, not one generic proxy.
 
@@ -50,6 +50,21 @@ When a call fails, order: **limitation log → correct worker selected? → key 
 
 ---
 
+## Donor capacity is voluntary (do not over-rely)
+
+Shared donors are **gifts**, not guaranteed infrastructure. A contributor may **revoke or rotate keys**, **power off**, or **withdraw** the machine at any time.
+
+| Habit | Why |
+|-------|-----|
+| **No single point of capability** | If one donor is the only path to Groq/Brave/etc., plan redundancy: operator-owned keys, a second donor, another provider tier, or vault-held fallback |
+| **Assume churn** | Track **who** donated **which** key/worker; health-check leases; degrade gracefully when a donor disappears |
+| **Prefer operator-owned for critical path** | Long-running identity, billing, or “must work” APIs should not depend only on a stranger’s box unless explicitly accepted risk |
+| **Document dependency** | Limitation/memory: *“Category A Groq currently only on donor X — no fallback.”* Then close the gap |
+
+Donors **rotating their own API keys** is normal (quota, security); that is **not** ban-evasion IP rotation — update vault/routing and re-probe.
+
+---
+
 ## Identity and networking (related)
 
 - **Agent-only hostnames** — DNS on a domain the operator owns; worker terminates TLS for webhooks (assistance, email inbound).
@@ -66,7 +81,7 @@ When a call fails, order: **limitation log → correct worker selected? → key 
 
 ## What not to treat as “clever architecture”
 
-- **IP rotation** or pool hopping to evade bans (not part of this design).
+- **Egress IP rotation** or pool hopping to evade abuse bans or ToS (distinct from **moving API keys** or donors changing keys).
 - One compromised donor holding **all** keys because “it’s the proxy.”
 - Scraping logged-in operator sessions.
 - Hiding payments or sends from the operator or audit log.
@@ -75,8 +90,8 @@ When a call fails, order: **limitation log → correct worker selected? → key 
 
 ## How to use this doc
 
-1. When planning tools or worker jobs, ask: **which donor owns this key?**
-2. Propose topology in a design note or assistance request: *“Contributor X donates ARM box; operator loads Brave key there only; scheduler tag `provider=brave_search`.”*
-3. Iterate — you may centralize some keys in vault and shard others; document the live map in limitation/memory, not in code constants.
+1. When planning tools or worker jobs, ask: **which donor owns this key right now?** and **what happens if they leave?**
+2. Propose topology in a design note or assistance request: *“Contributor X donates ARM box; operator loads Brave key there only; scheduler tag `provider=brave_search`; operator vault holds backup Brave key on body if X drops.”*
+3. Iterate — move keys between vault and donors as needed; document the live map in limitation/memory, not in code constants.
 
 See also [AGENT_CAPABILITY_MANDATE.md](AGENT_CAPABILITY_MANDATE.md), [DEDICATED_SERVER.md](DEDICATED_SERVER.md), [WORKER_PROTOCOL.md](WORKER_PROTOCOL.md), [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md).
