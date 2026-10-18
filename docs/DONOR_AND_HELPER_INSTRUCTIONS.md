@@ -12,6 +12,8 @@ Keys and vault slots are **food** ([AGENT_MIND_LAYERS.md](AGENT_MIND_LAYERS.md))
 
 When someone **does** donate compute or keys, they should get **clear, scoped** instructions you wrote — not a vague “join my project.”
 
+Humans may also read operator-published pages via **`privatemind portal serve`** ([PORTAL.md](PORTAL.md)): contributor and helper getting-started docs until your playbooks exist under `docs/helpers/`.
+
 ---
 
 ## What you maintain

@@ -4,6 +4,22 @@
 
 The trusted core keeps private state, tasks, and memory. API keys and SSH identities live in an internal **credential vault**, not in chat logs or the memory database.
 
+### Who you are (pick a path)
+
+| Role | Start here |
+|------|------------|
+| **Primary admin (first boot)** | [docs/FIRST_BOOT_ADMIN.md](docs/FIRST_BOOT_ADMIN.md) — vault, node identity, wake, portal |
+| **Contributor / donor** | Operator gives you a portal URL → [docs/CONTRIBUTOR_GETTING_STARTED.md](docs/CONTRIBUTOR_GETTING_STARTED.md) |
+| **Helper (no servers)** | [docs/HELPER_GETTING_STARTED.md](docs/HELPER_GETTING_STARTED.md) |
+
+**Local portal** (instructions + donor intent queue, no auto-provisioning):
+
+```bash
+privatemind portal serve   # http://127.0.0.1:8780
+```
+
+Details: [docs/PORTAL.md](docs/PORTAL.md).
+
 ---
 
 ## 0. What you are setting up
@@ -162,6 +178,8 @@ pytest tests/test_self_improvement_loop.py -q
 | `privatemind tick --steps N` | Advance tasks |
 | `privatemind task "..."` | Enqueue work |
 | `privatemind status` | Tasks, checkpoint, human help queue |
+| `privatemind portal serve` | Local web hub for donor/helper instructions + intents |
+| `privatemind portal intents list` | Review submitted donor intents |
 | `privatemind demo --run` | Offline milestone demo (no vault required) |
 | `privatemind capabilities` | Registered models/tools |
 

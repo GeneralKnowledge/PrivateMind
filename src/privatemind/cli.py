@@ -4,6 +4,7 @@ from pathlib import Path
 import click
 
 from privatemind.cli_accounts import account_group, vault_group
+from privatemind.cli_portal import portal_group
 from privatemind.cli_worker import worker_group
 from privatemind.config import Settings
 from privatemind.core.agent import PrivateMindCore
@@ -35,12 +36,13 @@ def init_cmd(ctx: click.Context) -> None:
     core = _core(ctx.obj["data_dir"], unlock_vault=False)
     click.echo(f"Initialized PrivateMind at {core.settings.db_path}")
     if not core.vault.exists:
-        click.echo("Next: privatemind vault init — then add accounts (see README).")
+        click.echo("Next: privatemind vault init — then see docs/FIRST_BOOT_ADMIN.md and README.")
 
 
 main.add_command(vault_group, name="vault")
 main.add_command(account_group, name="account")
 main.add_command(worker_group, name="worker")
+main.add_command(portal_group, name="portal")
 
 
 @main.group()
