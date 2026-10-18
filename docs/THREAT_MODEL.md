@@ -16,7 +16,7 @@ This document covers v0.1 (local trusted core) and stated assumptions for upcomi
 | Adversary | Example | v0.1 mitigations | Gaps |
 |-----------|---------|------------------|------|
 | Malicious prompt injection via task text | Hidden instructions in description | System prompt + core parses actions; no direct exec | Model may choose bad actions if LLM backend used without review |
-| Malicious worker (future) | Signed but false compute result | N/A yet | M4 verification, quarantine |
+| Malicious worker | Signed but false compute result | `tests/test_worker_adversarial.py` | M4 verification + auto-quarantine |
 | Malicious contributor (future) | Sybil workers | N/A yet | Leases, reputation-informed checks |
 | Compromised tool output | Forged JSON | Tools run in-process with fixed API | No sandbox yet for arbitrary code |
 | Malicious repo content (future) | Issue/PR injection | N/A yet | M2 read-only + policy |

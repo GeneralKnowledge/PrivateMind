@@ -69,7 +69,19 @@ Implemented on **localhost**:
 
 **Remote mTLS (lab PKI):** `privatemind worker pki-init`, pair with `--host`/`--mtls`, `worker serve --host 0.0.0.0 --mtls`. See [REMOTE_WORKER.md](REMOTE_WORKER.md).
 
-Not yet: production CA integration, worker advertisements, Sybil/quarantine policies, general proof systems.
+**M4 adversarial verification (implemented):**
+
+| Feature | Status |
+|---------|--------|
+| Response schema validation | `worker/verifier.py` |
+| `input_hash` binding on results | rejected if mismatch |
+| Trust states | `paired`, `restricted`, `quarantined`, `revoked` |
+| Auto-quarantine | after `PRIVATE_MIND_WORKER_QUARANTINE_FAILURE_THRESHOLD` consecutive failures (default 3) |
+| Operator CLI | `privatemind worker trust quarantine|release|restrict|restore|revoke` |
+
+`restricted` workers may receive jobs; the core verifies correctness but never **accepts** results until restored to `paired`.
+
+Not yet: production CA integration, worker advertisements, Sybil resistance at scale, general proof systems.
 
 ### Quick demo
 

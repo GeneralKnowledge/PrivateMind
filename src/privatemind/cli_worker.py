@@ -97,6 +97,76 @@ def worker_lease(worker_fingerprint: str, operations: tuple[str, ...], lease_id:
     click.echo(json.dumps({"lease_id": lid, "operations": list(operations)}))
 
 
+@worker_group.group("trust")
+def worker_trust_group() -> None:
+    """Quarantine, restrict, and restore worker trust (M4)."""
+
+
+@worker_trust_group.command("quarantine")
+@click.argument("fingerprint")
+@click.option("--data-dir", type=click.Path(path_type=Path), default=None)
+def worker_trust_quarantine(fingerprint: str, data_dir: Path | None) -> None:
+    settings = _settings(data_dir)
+    db = Database(settings.db_path)
+    db.initialize()
+    store = PairingStore(db)
+    if not store.quarantine_worker(fingerprint):
+        raise click.ClickException("Worker not found")
+    click.echo(json.dumps({"quarantined": fingerprint}))
+
+
+@worker_trust_group.command("release")
+@click.argument("fingerprint")
+@click.option("--data-dir", type=click.Path(path_type=Path), default=None)
+def worker_trust_release(fingerprint: str, data_dir: Path | None) -> None:
+    settings = _settings(data_dir)
+    db = Database(settings.db_path)
+    db.initialize()
+    store = PairingStore(db)
+    if not store.release_quarantine(fingerprint):
+        raise click.ClickException("Worker not found or not quarantined")
+    click.echo(json.dumps({"released": fingerprint, "trust_state": "paired"}))
+
+
+@worker_trust_group.command("restrict")
+@click.argument("fingerprint")
+@click.option("--data-dir", type=click.Path(path_type=Path), default=None)
+def worker_trust_restrict(fingerprint: str, data_dir: Path | None) -> None:
+    settings = _settings(data_dir)
+    db = Database(settings.db_path)
+    db.initialize()
+    store = PairingStore(db)
+    if not store.restrict_worker(fingerprint):
+        raise click.ClickException("Worker not found")
+    click.echo(json.dumps({"restricted": fingerprint}))
+
+
+@worker_trust_group.command("restore")
+@click.argument("fingerprint")
+@click.option("--data-dir", type=click.Path(path_type=Path), default=None)
+def worker_trust_restore(fingerprint: str, data_dir: Path | None) -> None:
+    settings = _settings(data_dir)
+    db = Database(settings.db_path)
+    db.initialize()
+    store = PairingStore(db)
+    if not store.restore_paired(fingerprint):
+        raise click.ClickException("Worker not found")
+    click.echo(json.dumps({"trust_state": "paired", "fingerprint": fingerprint}))
+
+
+@worker_trust_group.command("revoke")
+@click.argument("fingerprint")
+@click.option("--data-dir", type=click.Path(path_type=Path), default=None)
+def worker_trust_revoke(fingerprint: str, data_dir: Path | None) -> None:
+    settings = _settings(data_dir)
+    db = Database(settings.db_path)
+    db.initialize()
+    store = PairingStore(db)
+    if not store.revoke_worker(fingerprint):
+        raise click.ClickException("Worker not found")
+    click.echo(json.dumps({"revoked": fingerprint}))
+
+
 @worker_group.command("list")
 @click.option("--data-dir", type=click.Path(path_type=Path), default=None)
 def worker_list(data_dir: Path | None) -> None:

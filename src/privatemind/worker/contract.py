@@ -39,5 +39,8 @@ class JobResponseEnvelope:
 class VerificationRecord:
     job_id: str
     authenticity_ok: bool
+    schema_ok: bool
+    input_hash_ok: bool
     correctness_status: str  # pending | passed | failed
     accepted: bool
+    rejection_reasons: list[str]

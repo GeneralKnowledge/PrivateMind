@@ -38,6 +38,15 @@ class PairingStore:
                     msg_id TEXT PRIMARY KEY,
                     seen_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS worker_verification_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    worker_fingerprint TEXT NOT NULL,
+                    job_id TEXT NOT NULL,
+                    accepted INTEGER NOT NULL,
+                    authenticity_ok INTEGER NOT NULL,
+                    correctness_status TEXT NOT NULL,
+                    recorded_at TEXT NOT NULL
+                );
                 """
             )
             self._migrate_worker_peers(conn)
@@ -50,6 +59,10 @@ class PairingStore:
             conn.execute("ALTER TABLE worker_peers ADD COLUMN endpoint_port INTEGER")
         if "use_mtls" not in cols:
             conn.execute("ALTER TABLE worker_peers ADD COLUMN use_mtls INTEGER NOT NULL DEFAULT 0")
+        if "consecutive_failures" not in cols:
+            conn.execute("ALTER TABLE worker_peers ADD COLUMN consecutive_failures INTEGER NOT NULL DEFAULT 0")
+        if "quarantined_at" not in cols:
+            conn.execute("ALTER TABLE worker_peers ADD COLUMN quarantined_at TEXT")
 
     def pair_worker(
         self,
@@ -101,6 +114,53 @@ class PairingStore:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    def set_trust_state(self, fingerprint: str, trust_state: str) -> bool:
+        with self._db.session() as conn:
+            cur = conn.execute(
+                "UPDATE worker_peers SET trust_state = ? WHERE fingerprint = ?",
+                (trust_state, fingerprint),
+            )
+            return cur.rowcount > 0
+
+    def quarantine_worker(self, fingerprint: str, *, reason: str = "operator") -> bool:
+        with self._db.session() as conn:
+            cur = conn.execute(
+                """
+                UPDATE worker_peers
+                SET trust_state = 'quarantined', quarantined_at = ?
+                WHERE fingerprint = ?
+                """,
+                (utc_now(), fingerprint),
+            )
+            return cur.rowcount > 0
+
+    def release_quarantine(self, fingerprint: str) -> bool:
+        with self._db.session() as conn:
+            cur = conn.execute(
+                """
+                UPDATE worker_peers
+                SET trust_state = 'paired', quarantined_at = NULL, consecutive_failures = 0
+                WHERE fingerprint = ? AND trust_state = 'quarantined'
+                """,
+                (fingerprint,),
+            )
+            return cur.rowcount > 0
+
+    def restrict_worker(self, fingerprint: str) -> bool:
+        return self.set_trust_state(fingerprint, "restricted")
+
+    def restore_paired(self, fingerprint: str) -> bool:
+        with self._db.session() as conn:
+            cur = conn.execute(
+                """
+                UPDATE worker_peers
+                SET trust_state = 'paired', consecutive_failures = 0
+                WHERE fingerprint = ? AND trust_state IN ('restricted', 'paired')
+                """,
+                (fingerprint,),
+            )
+            return cur.rowcount > 0
+
     def revoke_worker(self, fingerprint: str) -> bool:
         with self._db.session() as conn:
             cur = conn.execute(
@@ -112,6 +172,67 @@ class PairingStore:
                 (fingerprint,),
             )
             return cur.rowcount > 0
+
+    def record_verification_outcome(
+        self,
+        *,
+        worker_fingerprint: str,
+        job_id: str,
+        accepted: bool,
+        authenticity_ok: bool,
+        correctness_status: str,
+        failure_threshold: int,
+    ) -> dict[str, Any]:
+        """Persist event; auto-quarantine after consecutive failed verifications."""
+        quarantined = False
+        with self._db.session() as conn:
+            conn.execute(
+                """
+                INSERT INTO worker_verification_events (
+                    worker_fingerprint, job_id, accepted, authenticity_ok,
+                    correctness_status, recorded_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    worker_fingerprint,
+                    job_id,
+                    1 if accepted else 0,
+                    1 if authenticity_ok else 0,
+                    correctness_status,
+                    utc_now(),
+                ),
+            )
+            if accepted:
+                conn.execute(
+                    "UPDATE worker_peers SET consecutive_failures = 0 WHERE fingerprint = ?",
+                    (worker_fingerprint,),
+                )
+            else:
+                conn.execute(
+                    """
+                    UPDATE worker_peers
+                    SET consecutive_failures = consecutive_failures + 1
+                    WHERE fingerprint = ?
+                    """,
+                    (worker_fingerprint,),
+                )
+                row = conn.execute(
+                    "SELECT consecutive_failures, trust_state FROM worker_peers WHERE fingerprint = ?",
+                    (worker_fingerprint,),
+                ).fetchone()
+                if row and row["trust_state"] == "paired":
+                    failures = int(row["consecutive_failures"])
+                    if failures >= failure_threshold:
+                        conn.execute(
+                            """
+                            UPDATE worker_peers
+                            SET trust_state = 'quarantined', quarantined_at = ?
+                            WHERE fingerprint = ?
+                            """,
+                            (utc_now(), worker_fingerprint),
+                        )
+                        quarantined = True
+        return {"quarantined": quarantined}
 
     def record_replay(self, msg_id: str) -> bool:
         """Return False if msg_id already seen (replay)."""

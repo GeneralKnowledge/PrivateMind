@@ -86,6 +86,7 @@ class PrivateMindCore:
                 port=self.settings.worker_port,
                 mtls_paths=mtls,
                 default_use_mtls=self.settings.worker_use_mtls and mtls is not None,
+                quarantine_failure_threshold=self.settings.worker_quarantine_failure_threshold,
             )
 
         def _approve_tool_request(req_id: str, tool_name: str, purpose: str, justification: str) -> str | None:

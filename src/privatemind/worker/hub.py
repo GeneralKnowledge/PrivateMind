@@ -12,6 +12,7 @@ from privatemind.worker.pairing_store import PairingStore
 from privatemind.worker.mtls import MtlsPaths, build_client_ssl_context
 from privatemind.worker.transport import WorkerTransportError, send_message
 import ssl
+from privatemind.worker.trust import auto_accept_results, can_delegate
 from privatemind.worker.verifier import build_verification_record, input_hash, record_to_dict
 
 
@@ -27,6 +28,7 @@ class WorkerHub:
         port: int = 8765,
         mtls_paths: MtlsPaths | None = None,
         default_use_mtls: bool = False,
+        quarantine_failure_threshold: int = 3,
     ) -> None:
         self.core = core_identity
         self.pairing = pairing
@@ -36,6 +38,7 @@ class WorkerHub:
         self.port = port
         self._mtls_paths = mtls_paths
         self._default_use_mtls = default_use_mtls
+        self._quarantine_failure_threshold = quarantine_failure_threshold
         self._client_ssl: ssl.SSLContext | None = None
         if mtls_paths and mtls_paths.ca_cert.is_file():
             self._client_ssl = build_client_ssl_context(mtls_paths)
@@ -63,7 +66,12 @@ class WorkerHub:
         task_id: str | None = None,
     ) -> dict[str, Any]:
         peer = self.pairing.get_peer(worker_fingerprint)
-        if not peer or peer.get("trust_state") != "paired":
+        if not peer:
+            return {"ok": False, "error": "worker not paired or revoked"}
+        trust_state = str(peer.get("trust_state") or "")
+        if not can_delegate(trust_state):
+            if trust_state == "quarantined":
+                return {"ok": False, "error": "worker quarantined"}
             return {"ok": False, "error": "worker not paired or revoked"}
 
         lease = self.pairing.active_lease(worker_fingerprint, operation)
@@ -112,21 +120,39 @@ class WorkerHub:
 
         auth_ok = response.verify_with(peer["public_key_b64"])
         payload = response.payload or {}
-        result = payload.get("result") or {}
+        result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
 
         verification = build_verification_record(
             job_id=job_id,
+            expected_input_hash=ih,
             authenticity_ok=auth_ok,
             operation=operation,
             body=body,
-            result=result,
+            response_payload=payload,
+            allow_accept=auto_accept_results(trust_state),
         )
+        outcome = self.pairing.record_verification_outcome(
+            worker_fingerprint=worker_fingerprint,
+            job_id=job_id,
+            accepted=verification.accepted,
+            authenticity_ok=verification.authenticity_ok,
+            correctness_status=verification.correctness_status,
+            failure_threshold=self._quarantine_failure_threshold,
+        )
+        if outcome.get("quarantined"):
+            self.audit.record(
+                "worker_auto_quarantined",
+                worker=worker_fingerprint,
+                job_id=job_id,
+                threshold=self._quarantine_failure_threshold,
+            )
         self.audit.record(
             "worker_verification",
             job_id=job_id,
             authenticity=verification.authenticity_ok,
             correctness=verification.correctness_status,
             accepted=verification.accepted,
+            trust_state=trust_state,
         )
         self.memory.upsert(
             kind="worker_result",
