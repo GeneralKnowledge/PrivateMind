@@ -100,7 +100,7 @@ Think **out of the box**: the bottleneck is often not another LLM but **live dat
 
 ## Architecture patterns (consider — do not wait for operator)
 
-See **[AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md)** — donor/key affinity, sharded egress, movable keys, donor churn; mTLS brain→worker→API. Evaluate, document, request approval; respect ToS.
+See **[AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md)** — contributors donate a server + keys; that server **runs those APIs** (key affinity); **keys move freely** (vault ↔ donor); **no one machine runs every provider**; stable donor IPs (reject **IP** rotation for ban evasion only). **Do not over-rely** on shared donors — keep fallbacks; mTLS brain→worker→API. You choose routing/scheduling; respect ToS.
 
 ## Tooling and sandbox
 

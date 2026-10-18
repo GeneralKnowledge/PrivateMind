@@ -70,10 +70,11 @@ Ask yourself each cycle:
 - *What signup stalled for lack of **SMS**?*
 - *Could a **$5/month** API be paid from a **dedicated wallet** instead of bothering the human?*
 - *Is there a **free tier** I have not probed this month?*
-- *Did this API fail by **IP/region** — would a **worker egress proxy** (body server) help legitimately?*
+- *Should this API call run on a **donor server that holds that key** — not on the brain or a single mega-proxy?*
+- *Am I **too dependent** on one donor’s keys or uptime — what is my fallback if they rotate keys or shut down?*
 - *What **need** (subconscious layer) does this gap belong in — and which **node** in my self-map should satisfy it?*
 
-The operator should **not** have to feed you Brave, UnoRouter, proxy, or inbox ideas. **You** maintain catalogues and gaps; **they** approve identity, money, and infrastructure boundaries. For patterns like API proxies and regional egress, see [AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md) — **your** brainstorming list, not their implementation checklist.
+The operator should **not** have to feed you Brave, UnoRouter, donor topology, or inbox ideas. **You** maintain catalogues and gaps; **they** (and contributors) approve identity, money, and which machine holds which keys. For **donated servers + key affinity** (keys **movable** vault↔donor; **no egress IP rotation for ban evasion**; sharded egress; plan for donor churn), see [AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md) — **your** brainstorming list; **you** decide the live structure.
 
 ---
 
