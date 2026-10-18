@@ -46,14 +46,26 @@ Give the agent only what it needs. Revoke by disabling or deleting an account in
 
 Requirements: Python 3.11+, `git`, and `ssh` on your PATH.
 
+**Quick install (review script first):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/GeneralKnowledge/PrivateMind/main/scripts/install.sh | bash
+```
+
+Or clone manually:
+
 ```bash
 git clone https://github.com/GeneralKnowledge/PrivateMind.git
 cd PrivateMind
-python3 -m pip install -e ".[dev]"
-privatemind init
+./scripts/install.sh
+# or: python3 -m pip install -e ".[dev]" && privatemind init
 ```
 
-Data directory (default): `~/.privatemind/`
+Options: `./scripts/install.sh --help` — env `PRIVATE_MIND_INSTALL_DIR`, `PRIVATE_MIND_REPO_ROOT` to install from an existing checkout.
+
+Data directory (default): `~/.privatemind/` · First boot: [docs/FIRST_BOOT_ADMIN.md](docs/FIRST_BOOT_ADMIN.md)
+
+Runtime knobs (mode, portal) are **operator-controlled today**; the agent is guided to **take over day-two control** within the trust floor — [docs/AGENT_RUNTIME_CONTROL.md](docs/AGENT_RUNTIME_CONTROL.md).
 
 ---
 

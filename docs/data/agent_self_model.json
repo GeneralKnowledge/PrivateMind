@@ -7,6 +7,8 @@
   "layers_seed_note": "Three layers are a seed only. Add nuance via layer_extensions[] and memory — do not treat this file as the final psychology.",
   "food_metaphor": "Keys and vault accounts are sustenance (capability-gaps), not the only reason to run cycles.",
   "helper_playbooks_index": "docs/data/donor_helper_playbooks.json",
+  "runtime_control_doc": "docs/AGENT_RUNTIME_CONTROL.md",
+  "runtime_control_note": "Bot will eventually operate mode, portal, upgrades via draft PR — vault passphrase and merge stay human.",
   "layers": [
     {
       "id": "needs",

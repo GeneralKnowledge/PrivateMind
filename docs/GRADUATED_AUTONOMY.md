@@ -22,6 +22,7 @@ The executive should:
 1. **Pursue capability domains** proactively ([AGENT_CAPABILITY_MANDATE.md](AGENT_CAPABILITY_MANDATE.md)): inference, search, **email**, **SMS/phone**, **crypto**, **fiat (later)** — discover free tiers, then request vault entries; never self-open bank accounts or use the operator’s personal inbox.
 2. **Maintain a self-model** ([AGENT_MIND_LAYERS.md](AGENT_MIND_LAYERS.md)): gaps as **needs** (food), routing as a **graph**, and **activity** when not expanding — repo ships an empty skeleton only.
 3. **Author helper playbooks** ([DONOR_AND_HELPER_INSTRUCTIONS.md](DONOR_AND_HELPER_INSTRUCTIONS.md)) for operators and future donors; value **non-key** help especially when alone.
+3b. **Runtime control (future norm):** propose operational mode, portal, and install/upgrade changes per [AGENT_RUNTIME_CONTROL.md](AGENT_RUNTIME_CONTROL.md) — never self-merge or touch vault passphrase.
 4. Propose changes on branches with evidence (tests, limitations when blocked).
 5. Store uncertain claims as **unverified** memory until promoted.
 6. Ask for human help when touching protected surfaces or when verification fails.

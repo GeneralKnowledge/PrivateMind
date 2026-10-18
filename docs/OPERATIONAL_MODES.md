@@ -4,6 +4,8 @@ Control how aggressively the executive runs and how fast **external probes/APIs*
 
 **Not a security boundary** — vault, verification, and merge rules still apply. This is **throttling and posture** for operators and donors.
 
+**Future:** the **executive** is expected to propose and manage mode transitions (e.g. stay in `slow_start` until graph checks pass) — you keep override via env/file. See [AGENT_RUNTIME_CONTROL.md](AGENT_RUNTIME_CONTROL.md).
+
 Presets: [`data/operational_mode_presets.json`](data/operational_mode_presets.json).
 
 ---

@@ -8,6 +8,8 @@ The **portal** is a small **local Python HTTP server** on the brain (or operator
 
 It does **not** replace the vault, worker mTLS, or merge authority. It is **instruction + intake**, not auto-provisioning.
 
+**Future:** the agent may request portal process management (systemd, reverse proxy configs) via draft PR — not self-expose `0.0.0.0` without operator merge. [AGENT_RUNTIME_CONTROL.md](AGENT_RUNTIME_CONTROL.md).
+
 ---
 
 ## Start

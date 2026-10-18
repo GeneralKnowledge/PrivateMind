@@ -23,11 +23,18 @@ Optional now, later via assistance: agent email, SMS, search API, second worker 
 
 ### 1. Install and init data dir
 
+**One-liner (read [scripts/install.sh](../scripts/install.sh) before piping):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/GeneralKnowledge/PrivateMind/main/scripts/install.sh | bash
+```
+
+**Or from a clone:**
+
 ```bash
 git clone https://github.com/GeneralKnowledge/PrivateMind.git
 cd PrivateMind
-python3 -m pip install -e ".[dev]"
-privatemind init
+./scripts/install.sh
 privatemind mode status    # expect slow_start after init
 ```
 

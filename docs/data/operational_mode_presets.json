@@ -1,6 +1,8 @@
 {
   "schema_version": "2026-10-18",
   "doc": "docs/OPERATIONAL_MODES.md",
+  "agent_runtime_control_doc": "docs/AGENT_RUNTIME_CONTROL.md",
+  "agent_note": "Executive should eventually propose mode changes and honor throttles; operator env/file override wins.",
   "modes": {
     "slow_start": {
       "label": "Slow start (setup)",
