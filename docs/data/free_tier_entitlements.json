@@ -1,0 +1,480 @@
+{
+  "schema_version": "2026-10-18",
+  "catalog_title": "Free LLM API entitlements (October 2026)",
+  "methodology": {
+    "rules": [
+      "Permanent free access: no expiring trial credits as the primary entitlement.",
+      "Real API access: HTTP from a Python router, not website-only chat.",
+      "Direct access: calls go to provider or declared aggregator endpoints, never via GitHub.",
+      "Published limits recorded separately from conservative enforced limits for routing.",
+      "UK developer: note region, verification, card requirements, commercial restrictions.",
+      "Do not classify as Category A without API entitlement verification and a last_verified date."
+    ],
+    "eligibility_class": {
+      "A": "Permanent free API — ongoing inference without expiring credit balance as the main offer.",
+      "B": "Free with restrictions — trial keys, non-commercial, model-scoped, card-linked tiers, or weak docs.",
+      "C": "Worth investigating — aggregators, unclear quotas, conflicting official pages, or probe-required."
+    },
+    "free_tier_status_values": [
+      "permanent_free_tier",
+      "selected_models_free",
+      "daily_allowance",
+      "neuron_budget",
+      "trial_non_commercial",
+      "payment_method_required",
+      "aggregator_free_pool",
+      "retired",
+      "unverified"
+    ]
+  },
+  "discovery_sources_not_proof": [
+    {
+      "id": "freellm-net",
+      "url": "https://freellm.net/",
+      "notes": "Large model directory; discovery only — each row needs official verification."
+    },
+    {
+      "id": "github-readme-lists",
+      "path": "docs/data/free_tier_github_sources.json",
+      "notes": "Community lists; use research github-sync for hints, not Category A without probes."
+    }
+  ],
+  "retired": [
+    {
+      "provider": "GitHub Models",
+      "provider_id": "github_models",
+      "retired_on": "2026-07-30",
+      "source_url": "https://github.blog/changelog/2026-07-30-github-models-is-now-retired/",
+      "notes": "Playground, catalog, inference API, BYOK removed. Not for router."
+    }
+  ],
+  "entries": [
+    {
+      "id": "groq-openai-compatible",
+      "provider": "Groq",
+      "provider_id": "groq",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "A",
+      "model_id": "(per-model; e.g. llama-3.1-8b-instant)",
+      "endpoint": "https://api.groq.com/openai/v1",
+      "free_tier_status": "permanent_free_tier",
+      "limits_official": {
+        "rpm": "model-specific",
+        "rpd": "model-specific",
+        "tpm": "model-specific",
+        "tpd": null,
+        "concurrency": "org-wide shared quota",
+        "source_url": "https://console.groq.com/docs/rate-limits"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 25,
+        "rpd": 900,
+        "notes": "Set below published peaks; backoff on 429."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "assumed_ok_not_uk_specific_docs",
+      "card_required": false,
+      "commercial_use": "verify_tos",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://console.groq.com/docs/rate-limits"
+        }
+      ],
+      "verification_notes": "Strong default Category A candidate; limits vary by model — probe /v1/models after key setup."
+    },
+    {
+      "id": "cloudflare-workers-ai-neurons",
+      "provider": "Cloudflare Workers AI",
+      "provider_id": "cloudflare_workers_ai",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "A",
+      "model_id": "@cf/* (catalog; not all on Workers Free plan)",
+      "endpoint": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{model}",
+      "free_tier_status": "neuron_budget",
+      "limits_official": {
+        "neurons_per_day": 10000,
+        "reset_utc": "00:00",
+        "rpm": "varies by model",
+        "source_url": "https://developers.cloudflare.com/workers-ai/platform/pricing/"
+      },
+      "limits_enforced_conservative": {
+        "neurons_per_day": 9000,
+        "rpm": 30,
+        "notes": "Stop before hard 10k; some models require Workers Paid — check catalog."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "global_cf_account",
+      "card_required": false,
+      "commercial_use": "verify_tos",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://developers.cloudflare.com/workers-ai/platform/pricing/"
+        }
+      ],
+      "verification_notes": "Permanent daily neuron pool, not trial credits. Not OpenAI base URL — Workers binding or REST."
+    },
+    {
+      "id": "openrouter-free-suffix",
+      "provider": "OpenRouter",
+      "provider_id": "openrouter",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "B",
+      "model_id": "*:free (per-model; not the auto free router)",
+      "endpoint": "https://openrouter.ai/api/v1",
+      "free_tier_status": "selected_models_free",
+      "limits_official": {
+        "rpm": 20,
+        "rpd": 50,
+        "rpd_with_10_usd_lifetime": 1000,
+        "source_url": "https://openrouter.ai/docs/api/reference/limits"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 15,
+        "rpd": 45,
+        "notes": "Track each model id separately; shared account quota."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "assumed_ok",
+      "card_required": false,
+      "commercial_use": "verify_per_upstream_model",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://openrouter.ai/docs/api/reference/limits"
+        }
+      ],
+      "verification_notes": "Category B: generous but capped; distinguish explicit :free model ids from paid routes."
+    },
+    {
+      "id": "nvidia-nim-hosted",
+      "provider": "NVIDIA NIM (hosted)",
+      "provider_id": "nvidia_nim",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "B",
+      "model_id": "(build.nvidia.com catalog)",
+      "endpoint": "https://integrate.api.nvidia.com/v1",
+      "free_tier_status": "selected_models_free",
+      "limits_official": {
+        "rpm": "per-model",
+        "payment_details": "verify per model page",
+        "source_url": "https://build.nvidia.com/"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 10,
+        "notes": "Probe each model; phone verification reported on some flows."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "assumed_ok",
+      "card_required": "varies_by_model",
+      "commercial_use": "dev_free_production_licensed",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://integrate.api.nvidia.com/v1"
+        }
+      ],
+      "verification_notes": "Re-check which models remain free and whether payment method is required before Category A."
+    },
+    {
+      "id": "siliconflow-free-models",
+      "provider": "SiliconFlow",
+      "provider_id": "siliconflow",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "C",
+      "model_id": "non-Pro/ prefixed models only",
+      "endpoint": "https://api.siliconflow.cn/v1",
+      "free_tier_status": "selected_models_free",
+      "limits_official": {
+        "rpm": "1000-10000 by model",
+        "tpm": "model-specific",
+        "source_url": "https://docs.siliconflow.com/en/userguide/rate-limits/rate-limit-and-upgradation"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 500,
+        "notes": "Per-model fixed free limits; identity verification for some DeepSeek models."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "assumed_ok",
+      "card_required": false,
+      "commercial_use": "verify_tos",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://docs.siliconflow.com/en/userguide/rate-limits/rate-limit-and-upgradation"
+        }
+      ],
+      "verification_notes": "Investigate each model row — do not assume entire catalog is free."
+    },
+    {
+      "id": "z-ai-glm",
+      "provider": "Z.AI (Zhipu)",
+      "provider_id": "z_ai",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "C",
+      "model_id": "(e.g. GLM-4.x-Flash variants)",
+      "endpoint": "https://open.bigmodel.cn/ or https://api.z.ai/api/paas/v4",
+      "free_tier_status": "unverified",
+      "limits_official": {
+        "source_url": "https://docs.z.ai/"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 10,
+        "notes": "Probe after signup; also reachable via aggregators."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "verify",
+      "card_required": "unknown",
+      "commercial_use": "verify_tos",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://docs.z.ai/"
+        }
+      ],
+      "verification_notes": "Priority recheck for current free models and account restrictions."
+    },
+    {
+      "id": "google-gemini-api",
+      "provider": "Google Gemini API",
+      "provider_id": "google_gemini",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "B",
+      "model_id": "(free-tier eligible models in AI Studio)",
+      "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai/",
+      "free_tier_status": "permanent_free_tier",
+      "limits_official": {
+        "rpm_tpm": "project/model in AI Studio",
+        "source_url": "https://ai.google.dev/gemini-api/docs/billing"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 10,
+        "notes": "Conservative until project shows Free tier in console."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "listed_supported_official_docs",
+      "card_required": false,
+      "commercial_use": "free_tier_data_use_policy_applies",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://ai.google.dev/gemini-api/docs/available-regions"
+        },
+        {
+          "kind": "official",
+          "url": "https://ai.google.dev/gemini-api/docs/billing"
+        }
+      ],
+      "verification_notes": "Official docs list UK/EEA/CH for free tier, but community reports 'Unavailable' quota tier — UK operator must verify project in AI Studio before relying."
+    },
+    {
+      "id": "huggingface-inference-providers",
+      "provider": "Hugging Face Inference Providers",
+      "provider_id": "huggingface",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "B",
+      "model_id": "router-selected",
+      "endpoint": "https://router.huggingface.co/v1",
+      "free_tier_status": "daily_allowance",
+      "limits_official": {
+        "monthly_credits": "none for free accounts (2026 reports)",
+        "source_url": "https://huggingface.co/docs/inference-providers"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 5,
+        "notes": "Treat as limited/consumable; label separately from permanent free."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "assumed_ok",
+      "card_required": false,
+      "commercial_use": "verify_tos",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "community_report",
+          "url": "https://huggingface.co/docs/inference-providers"
+        }
+      ],
+      "verification_notes": "Not 'unlimited free API' — clarify no included monthly inference credits on free accounts."
+    },
+    {
+      "id": "cohere-trial",
+      "provider": "Cohere",
+      "provider_id": "cohere",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "B",
+      "model_id": "(trial key scope)",
+      "endpoint": "https://api.cohere.com/compatibility/v1",
+      "free_tier_status": "trial_non_commercial",
+      "limits_official": {
+        "rpm": "20 (trial docs)",
+        "source_url": "https://docs.cohere.com/"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 15,
+        "notes": "Do not use trial key for production/commercial workloads."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "assumed_ok",
+      "card_required": false,
+      "commercial_use": "restricted_trial",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://docs.cohere.com/"
+        }
+      ],
+      "verification_notes": "Category B — trial/non-commercial, not permanent production free tier."
+    },
+    {
+      "id": "sambanova-cloud",
+      "provider": "SambaNova Cloud",
+      "provider_id": "sambanova_cloud",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "C",
+      "model_id": "(catalog)",
+      "endpoint": "https://api.sambanova.ai/v1",
+      "free_tier_status": "payment_method_required",
+      "limits_official": {
+        "conflict": "Rate-limit docs describe free tier without payment method; plans page requires payment method + credits",
+        "source_url_plans": "https://cloud.sambanova.ai/plans",
+        "source_url_limits": "https://docs.sambanova.ai/docs/en/models/rate-limits"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 0,
+        "notes": "Do not route until probe confirms entitlement without 402."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "verify",
+      "card_required": true,
+      "commercial_use": "verify_tos",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://cloud.sambanova.ai/plans"
+        },
+        {
+          "kind": "official",
+          "url": "https://docs.sambanova.ai/docs/en/models/rate-limits"
+        }
+      ],
+      "verification_notes": "Not Category A until API calls succeed without purchased credits. Operator reports mixed vs docs."
+    },
+    {
+      "id": "unorouter-aggregator",
+      "provider": "UnoRouter",
+      "provider_id": "unorouter",
+      "entry_kind": "aggregator",
+      "eligibility_class": "C",
+      "model_id": "*:free",
+      "endpoint": "https://api.unorouter.com/v1",
+      "free_tier_status": "aggregator_free_pool",
+      "limits_official": {
+        "rpm_per_free_model": 1,
+        "upstream": "pools vary; 429 with Retry-After",
+        "source_url": "https://unorouter.com/en/docs/platform/errors-and-rate-limits"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 1,
+        "notes": "Rotate models; do not count each upstream as a new provider in catalog."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "assumed_ok",
+      "card_required": false,
+      "commercial_use": "upstream_dependent_do_not_send_secrets",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://unorouter.com/en/docs/platform/quickstart"
+        }
+      ],
+      "verification_notes": "Promising aggregator — separate from direct providers; probe :free models only."
+    },
+    {
+      "id": "pollinations-ai",
+      "provider": "Pollinations.AI",
+      "provider_id": "pollinations_ai",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "C",
+      "model_id": "(multi-modal; auth evolving)",
+      "endpoint": "https://gen.pollinations.ai/",
+      "free_tier_status": "unverified",
+      "limits_official": {
+        "rpm": "4 (community docs)",
+        "pollen_budget": "verify current auth",
+        "source_url": "https://pollinations.ai/"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 3,
+        "notes": "Do not label permanent unrestricted API until auth/budget verified."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "verify",
+      "card_required": "unknown",
+      "commercial_use": "verify_tos",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://pollinations.ai/"
+        }
+      ],
+      "verification_notes": "Separate investigation — modalities beyond text."
+    },
+    {
+      "id": "ovhcloud-ai-endpoints-anon",
+      "provider": "OVHcloud AI Endpoints",
+      "provider_id": "ovhcloud_ai_endpoints",
+      "entry_kind": "direct_provider",
+      "eligibility_class": "A",
+      "model_id": "(catalog)",
+      "endpoint": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1",
+      "free_tier_status": "permanent_free_tier",
+      "limits_official": {
+        "rpm_anonymous": 2,
+        "rpm_with_key": 400,
+        "source_url": "https://docs.ovhcloud.com/en/public-cloud/ai-machine-learning/ai-endpoints-capabilities/"
+      },
+      "limits_enforced_conservative": {
+        "rpm": 1,
+        "notes": "Anonymous tier for smoke tests only."
+      },
+      "context_window": "model-specific",
+      "max_output": "model-specific",
+      "uk_availability": "eu_hosting",
+      "card_required": false,
+      "commercial_use": "verify_tos",
+      "last_verified": "2026-10-18",
+      "sources": [
+        {
+          "kind": "official",
+          "url": "https://docs.ovhcloud.com/en/public-cloud/ai-machine-learning/ai-endpoints-capabilities/"
+        }
+      ],
+      "verification_notes": "Permanent anonymous access with very low RPM — useful for EU/sovereignty tests."
+    }
+  ]
+}

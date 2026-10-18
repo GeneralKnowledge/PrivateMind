@@ -2,7 +2,11 @@
 
 **Status:** Research notes for operators and for the agent — not integration commitments. Free tiers **change often**; confirm limits in each vendor console before relying on them. Last reviewed: **2026-10-18**.
 
-Many valuable allowances are **under-documented** (buried in product docs, notebook UI, or intro pricing). The agent should **actively hunt** for these — see [How to research hidden / cheap options](#how-to-research-hidden--cheap-options) — and append verified rows here with source links and dates.
+**October 2026 catalogue (source-backed):** [FREE_TIER_CATALOG_OCT2026.md](FREE_TIER_CATALOG_OCT2026.md) and [`data/free_tier_entitlements.json`](data/free_tier_entitlements.json). Categories **A** (permanent free API), **B** (free with restrictions), **C** (investigate). CLI: `privatemind research entitlements --class A`.
+
+**Principles (Oct 2026):** Do not copy GitHub lists into Category A. Verify **API entitlement** (not “free model exists today”), record **official** vs **conservative enforced** limits, flag **UK** / card / commercial catches, and set `last_verified`. Discovery: [freellm.net](https://freellm.net/) and `research github-sync` — hints only. **GitHub Models** retired 2026-07-30 — not for routing.
+
+Many valuable allowances are **under-documented** (buried in product docs, notebook UI, or intro pricing). The agent should **actively hunt** for these — see [How to research hidden / cheap options](#how-to-research-hidden--cheap-options) — and append verified rows to the entitlement JSON with source links and dates.
 
 PrivateMind is designed so the **trusted core stays on your hardware** (or a VM you control) while optional cloud services supply inference, git hosting, CI, and webhooks. The goal here is **$0 incremental spend** at small scale, stacking free tiers until something is genuinely worth paying for.
 

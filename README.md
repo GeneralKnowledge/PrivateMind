@@ -18,7 +18,7 @@ Prepare **separate accounts** for the agent (recommended):
 
 Give the agent only what it needs. Revoke by disabling or deleting an account in the vault.
 
-**Building without paid services:** See [docs/FREE_TIER_RESEARCH.md](docs/FREE_TIER_RESEARCH.md) (NVIDIA NIM, GPU spillover, hidden quotas), the backlog [docs/FREE_TIER_CANDIDATES.md](docs/FREE_TIER_CANDIDATES.md), and the provider catalog [docs/data/free_tier_provider_catalog.json](docs/data/free_tier_provider_catalog.json). Probe with `privatemind research probe-api` / `probe-nim`, diff your quota JSON with `research quota-diff`, seed candidates with `research seed-catalog`, and refresh from community GitHub lists with `research github-sync`.
+**Building without paid services:** Start with the October 2026 catalogue [docs/FREE_TIER_CATALOG_OCT2026.md](docs/FREE_TIER_CATALOG_OCT2026.md) and machine-readable [docs/data/free_tier_entitlements.json](docs/data/free_tier_entitlements.json) (Categories A/B/C, official vs enforced limits). Broader notes: [docs/FREE_TIER_RESEARCH.md](docs/FREE_TIER_RESEARCH.md). CLI: `privatemind research entitlements --class A`, `probe-api`, `github-sync` (discovery only).
 
 ---
 

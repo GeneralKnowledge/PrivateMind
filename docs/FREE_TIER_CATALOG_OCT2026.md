@@ -1,0 +1,96 @@
+# Free LLM API catalogue (October 2026)
+
+**Purpose:** Source-backed inventory for building a Python router — not a copy of third-party GitHub lists.
+
+**Machine-readable:** [`data/free_tier_entitlements.json`](data/free_tier_entitlements.json)  
+**CLI:** `privatemind research entitlements [--class A|B|C]`
+
+**Last methodology pass:** 2026-10-18
+
+---
+
+## Eligibility rules (summary)
+
+| Rule | Meaning |
+|------|---------|
+| Permanent free | No expiring trial credits as the main entitlement |
+| Real API | Callable from your router (OpenAI-compatible or documented REST) |
+| Direct access | Provider or declared aggregator URL — **never** GitHub as inference hop |
+| Two limit columns | **Official** limits from docs; **conservative enforced** limits for your script |
+| UK developer | Flag region, verification, card, commercial restrictions |
+| Verification | Every row needs `last_verified` + `sources[]`; community lists are hints only |
+
+**Discovery (not proof):** [freellm.net](https://freellm.net/), `privatemind research github-sync` — probe before Category A.
+
+---
+
+## Category A — Permanent free API
+
+Ongoing free inference without an expiring credit balance as the primary offer (still subject to rate limits).
+
+| Provider | Model ID (examples) | Endpoint | Official limits (summary) | Enforced (conservative) | UK | Card | Last verified |
+|----------|---------------------|----------|---------------------------|-------------------------|-----|------|---------------|
+| Groq | per-model | `https://api.groq.com/openai/v1` | RPM/RPD/TPM per model | 25 RPM, 900 RPD | OK* | No | 2026-10-18 |
+| Cloudflare Workers AI | `@cf/...` | account AI run URL | 10,000 Neurons/day (00:00 UTC) | 9000 Neurons/day | OK* | No | 2026-10-18 |
+| OVHcloud AI Endpoints | catalog | `https://oai.endpoints.kepler.ai.cloud.ovh.net/v1` | 2 RPM anon / 400 RPM keyed | 1 RPM anon | EU | No (anon) | 2026-10-18 |
+
+\*Assumed from global docs — confirm in console for your account.
+
+---
+
+## Category B — Free with restrictions
+
+Trial keys, non-commercial terms, model-scoped free routes, policy/data-use catches, or quota UI conflicts.
+
+| Provider | Issue | Endpoint | Last verified |
+|----------|-------|----------|---------------|
+| Google Gemini API | Official UK listed; some projects show “Unavailable” tier — verify AI Studio | `generativelanguage.googleapis.com` | 2026-10-18 |
+| OpenRouter | `:free` models only; 50 RPD default; not the auto free router | `https://openrouter.ai/api/v1` | 2026-10-18 |
+| NVIDIA NIM (hosted) | Per-model free RPM; phone/payment rules vary | `https://integrate.api.nvidia.com/v1` | 2026-10-18 |
+| Hugging Face Inference Providers | No included monthly credits on free accounts (2026) | `https://router.huggingface.co/v1` | 2026-10-18 |
+| Cohere | Trial / non-commercial restrictions | `https://api.cohere.com/compatibility/v1` | 2026-10-18 |
+
+---
+
+## Category C — Worth investigating
+
+Aggregators, conflicting official pages, or operator-dependent entitlement.
+
+| Provider | Why C | Action |
+|----------|-------|--------|
+| **UnoRouter** | Aggregator; ~1 RPM per `:free` model; upstream pools rotate | Probe `:free` ids; do not expand catalog per upstream |
+| **SambaNova Cloud** | Plans page requires payment method + credits; rate-limit docs disagree | Probe for 402; not Category A until success |
+| **SiliconFlow** | Only non-`Pro/` models free; per-model quotas | Enumerate free model ids |
+| **Z.AI / Zhipu** | Free model set changes | Probe after signup |
+| **Pollinations.AI** | Multi-modal; Pollen/auth rules | Separate track from text LLMs |
+
+---
+
+## Retired (do not route)
+
+| Provider | Retired | Source |
+|----------|---------|--------|
+| **GitHub Models** | 2026-07-30 | [GitHub changelog](https://github.blog/changelog/2026-07-30-github-models-is-now-retired/) |
+
+---
+
+## April 2026 → October 2026 reclassifications
+
+| Entry | April-style label | October 2026 class | Notes |
+|-------|-------------------|--------------------|-------|
+| SambaNova Cloud | “free API” list | **C** | Payment method + credits on plans page |
+| UnoRouter | (missing) | **C** aggregator | Working reports; verify `:free` routes |
+| Google Gemini | “free tier” | **B** | UK officially supported; verify project tier |
+| Hugging Face | “free inference” | **B** | No monthly credits narrative |
+| Cohere | “free API” | **B** | Trial / non-commercial |
+| GitHub Models | list staple | **Retired** | Remove from router configs |
+
+---
+
+## Field reference (machine catalogue)
+
+Each entry in `free_tier_entitlements.json` includes:
+
+`provider`, `provider_id`, `model_id`, `endpoint`, `eligibility_class`, `free_tier_status`, `limits_official`, `limits_enforced_conservative`, `context_window`, `max_output`, `uk_availability`, `card_required`, `commercial_use`, `last_verified`, `sources[]`, `verification_notes`.
+
+Add rows only after probe + official source — update `last_verified` when re-checking.

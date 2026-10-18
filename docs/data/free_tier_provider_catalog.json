@@ -1,6 +1,7 @@
 {
   "schema_version": "2026-09-27",
-  "description": "Static metadata for free-tier LLM providers. Pairs with runtime quota state JSON (same provider keys).",
+  "description": "Static metadata for free-tier LLM providers. Pairs with runtime quota state JSON (same provider keys). Authoritative A/B/C classes: docs/data/free_tier_entitlements.json.",
+  "entitlements_catalog": "docs/data/free_tier_entitlements.json",
   "providers": {
     "aion_labs": {
       "name": "Aion Labs",
@@ -15,6 +16,7 @@
     "cohere": {
       "name": "Cohere",
       "category": "llm",
+      "eligibility_class": "B",
       "candidate_slug": "cohere-trial",
       "base_url": "https://api.cohere.com/compatibility/v1",
       "api_key_env": ["COHERE_API_KEY"],
@@ -25,6 +27,7 @@
     "google_gemini": {
       "name": "Google Gemini API",
       "category": "llm",
+      "eligibility_class": "B",
       "candidate_slug": "google-gemini",
       "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
       "api_key_env": ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
@@ -45,6 +48,7 @@
     "z_ai": {
       "name": "Z.AI (GLM)",
       "category": "llm",
+      "eligibility_class": "C",
       "candidate_slug": "z-ai-glm",
       "base_url": "https://api.z.ai/api/paas/v4",
       "api_key_env": ["ZAI_API_KEY", "Z_AI_API_KEY"],
@@ -55,6 +59,7 @@
     "cloudflare_workers_ai": {
       "name": "Cloudflare Workers AI",
       "category": "llm",
+      "eligibility_class": "A",
       "candidate_slug": "cloudflare-workers-ai",
       "base_url": "",
       "api_key_env": ["CLOUDFLARE_API_TOKEN"],
@@ -65,6 +70,7 @@
     "groq": {
       "name": "Groq",
       "category": "llm",
+      "eligibility_class": "A",
       "candidate_slug": "groq",
       "base_url": "https://api.groq.com/openai/v1",
       "api_key_env": ["GROQ_API_KEY"],
@@ -75,6 +81,7 @@
     "huggingface": {
       "name": "Hugging Face Inference",
       "category": "llm",
+      "eligibility_class": "B",
       "candidate_slug": "huggingface-inference",
       "base_url": "https://api-inference.huggingface.co/v1",
       "api_key_env": ["HF_TOKEN", "HUGGINGFACE_API_KEY"],
@@ -115,6 +122,7 @@
     "nvidia_nim": {
       "name": "NVIDIA NIM (hosted)",
       "category": "llm",
+      "eligibility_class": "B",
       "candidate_slug": "nvidia-nim-hosted",
       "base_url": "https://integrate.api.nvidia.com/v1",
       "api_key_env": ["NVIDIA_API_KEY", "NGC_API_KEY"],
@@ -135,6 +143,7 @@
     "openrouter": {
       "name": "OpenRouter",
       "category": "llm",
+      "eligibility_class": "B",
       "candidate_slug": "openrouter-free",
       "base_url": "https://openrouter.ai/api/v1",
       "api_key_env": ["OPENROUTER_API_KEY"],
@@ -145,6 +154,7 @@
     "ovhcloud_ai_endpoints": {
       "name": "OVHcloud AI Endpoints",
       "category": "llm",
+      "eligibility_class": "A",
       "candidate_slug": "ovhcloud-ai-endpoints",
       "base_url": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1",
       "api_key_env": ["OVHCLOUD_API_KEY"],
@@ -155,6 +165,7 @@
     "siliconflow": {
       "name": "SiliconFlow",
       "category": "llm",
+      "eligibility_class": "C",
       "candidate_slug": "siliconflow-free",
       "base_url": "https://api.siliconflow.cn/v1",
       "api_key_env": ["SILICONFLOW_API_KEY"],
@@ -165,6 +176,8 @@
     "sambanova_cloud": {
       "name": "SambaNova Cloud",
       "category": "llm",
+      "eligibility_class": "C",
+      "entry_kind": "direct_provider",
       "candidate_slug": "sambanova-cloud",
       "base_url": "https://api.sambanova.ai/v1",
       "api_key_env": ["SAMBANOVA_API_KEY"],
@@ -175,12 +188,25 @@
     "unorouter": {
       "name": "UnoRouter",
       "category": "llm",
+      "eligibility_class": "C",
+      "entry_kind": "aggregator",
       "candidate_slug": "unorouter-free",
       "base_url": "https://api.unorouter.com/v1",
       "api_key_env": ["UNOROUTER_API_KEY"],
       "probe_openai_models": true,
       "docs_url": "https://unorouter.com/en/docs/platform/quickstart",
       "notes": "Aggregator; models ending in :free; ~1 req/min/model; upstream pools vary."
+    },
+    "pollinations_ai": {
+      "name": "Pollinations.AI",
+      "category": "llm",
+      "eligibility_class": "C",
+      "candidate_slug": "pollinations-ai",
+      "base_url": "https://gen.pollinations.ai/",
+      "api_key_env": ["POLLINATIONS_API_KEY"],
+      "probe_openai_models": false,
+      "docs_url": "https://pollinations.ai/",
+      "notes": "Multi-modal; Pollen/auth budget — verify before Category A."
     }
   }
 }
