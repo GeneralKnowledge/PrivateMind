@@ -178,7 +178,7 @@ privatemind worker serve    # terminal A
 privatemind worker demo     # terminal B
 ```
 
-See [docs/WORKER_PROTOCOL.md](docs/WORKER_PROTOCOL.md).
+See [docs/WORKER_PROTOCOL.md](docs/WORKER_PROTOCOL.md). **Remote VM:** [docs/REMOTE_WORKER.md](docs/REMOTE_WORKER.md).
 
 ---
 

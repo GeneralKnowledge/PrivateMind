@@ -9,7 +9,9 @@ from privatemind.worker.contract import JobPackage, JobPayloadType
 from privatemind.worker.envelope import WireMessage, new_message
 from privatemind.worker.identity import NodeIdentity
 from privatemind.worker.pairing_store import PairingStore
+from privatemind.worker.mtls import MtlsPaths, build_client_ssl_context
 from privatemind.worker.transport import WorkerTransportError, send_message
+import ssl
 from privatemind.worker.verifier import build_verification_record, input_hash, record_to_dict
 
 
@@ -23,6 +25,8 @@ class WorkerHub:
         audit: AuditLog,
         host: str = "127.0.0.1",
         port: int = 8765,
+        mtls_paths: MtlsPaths | None = None,
+        default_use_mtls: bool = False,
     ) -> None:
         self.core = core_identity
         self.pairing = pairing
@@ -30,6 +34,11 @@ class WorkerHub:
         self.audit = audit
         self.host = host
         self.port = port
+        self._mtls_paths = mtls_paths
+        self._default_use_mtls = default_use_mtls
+        self._client_ssl: ssl.SSLContext | None = None
+        if mtls_paths and mtls_paths.ca_cert.is_file():
+            self._client_ssl = build_client_ssl_context(mtls_paths)
 
     def delegate_compute_sha256(
         self,
@@ -84,8 +93,15 @@ class WorkerHub:
             payload={"job": job_dict},
         )
 
+        host = str(peer.get("endpoint_host") or self.host)
+        port = int(peer.get("endpoint_port") or self.port)
+        use_mtls = bool(peer.get("use_mtls")) if peer.get("use_mtls") is not None else self._default_use_mtls
+        ssl_ctx = self._client_ssl if use_mtls else None
+        if use_mtls and ssl_ctx is None:
+            return {"ok": False, "error": "mTLS required but core PKI not configured", "job_id": job_id}
+
         try:
-            raw = send_message(self.host, self.port, offer.to_dict())
+            raw = send_message(host, port, offer.to_dict(), ssl_context=ssl_ctx)
         except WorkerTransportError as exc:
             self.audit.record("worker_delegate_failed", job_id=job_id, error=str(exc))
             return {"ok": False, "error": str(exc), "job_id": job_id}

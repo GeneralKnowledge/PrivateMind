@@ -67,7 +67,9 @@ Implemented on **localhost**:
 | TCP job offer / result | `privatemind worker serve` on `127.0.0.1:8765` |
 | Correctness check | `compute_sha256` recomputed in core (authentic but false → rejected) |
 
-Not yet: mTLS/Noise WAN transport, worker advertisements, Sybil/quarantine policies, general proof systems.
+**Remote mTLS (lab PKI):** `privatemind worker pki-init`, pair with `--host`/`--mtls`, `worker serve --host 0.0.0.0 --mtls`. See [REMOTE_WORKER.md](REMOTE_WORKER.md).
+
+Not yet: production CA integration, worker advertisements, Sybil/quarantine policies, general proof systems.
 
 ### Quick demo
 

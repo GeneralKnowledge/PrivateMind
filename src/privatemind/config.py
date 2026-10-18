@@ -27,6 +27,8 @@ class Settings(BaseSettings):
 
     worker_host: str = "127.0.0.1"
     worker_port: int = 8765
+    worker_use_mtls: bool = True
+    worker_pki_dir_name: str = "mtls"
 
     @property
     def db_path(self) -> Path:
@@ -35,6 +37,10 @@ class Settings(BaseSettings):
     @property
     def runtime_dir(self) -> Path:
         return self.data_dir / self.runtime_dir_name
+
+    @property
+    def pki_dir(self) -> Path:
+        return self.data_dir / self.worker_pki_dir_name
 
 
 def get_settings() -> Settings:
