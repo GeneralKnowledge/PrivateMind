@@ -1,0 +1,26 @@
+{
+  "schema_version": "2026-09-27",
+  "generated_at": null,
+  "global": {
+    "queue_depth": 0,
+    "in_flight": 0,
+    "last_request_at": null
+  },
+  "providers": {
+    "groq": {
+      "enabled": true,
+      "requests": { "minute": 0, "hour": 0, "day": 0, "month": 0 },
+      "tokens": { "minute": 0, "day": 0, "month": 0 },
+      "budget": { "special_units_used": 0 },
+      "concurrency": { "in_flight": 0, "limit": 1 },
+      "health": {
+        "state": "unknown",
+        "consecutive_failures": 0,
+        "last_error": null,
+        "blocked_until": null
+      },
+      "queue": { "depth": 0, "oldest_request_at": null },
+      "observed_limits": { "from_headers": false, "raw": {} }
+    }
+  }
+}

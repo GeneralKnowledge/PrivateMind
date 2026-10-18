@@ -12,7 +12,8 @@ PrivateMind is designed so the **trusted core stays on your hardware** (or a VM 
 
 | Need | Built-in today | Typical free-tier supply |
 |------|----------------|---------------------------|
-| Planner / LLM | OpenAI-compatible HTTP (`account add-llm`) | Groq, Gemini API, OpenRouter `:free`, local Ollama |
+| Planner / LLM | OpenAI-compatible HTTP (`account add-llm`) | Groq, Gemini, NIM, OpenRouter `:free`, Kilo/Aion/LLM7/ModelScope/SiliconFlow/OVH, local Ollama |
+| Multi-provider routing | `privatemind research quota-diff` + catalog | Runtime quota JSON + [free_tier_provider_catalog.json](data/free_tier_provider_catalog.json) |
 | Git + self-improvement | **SSH git only** (vault `github` account) | GitHub Free (user/org), GitLab Free |
 | Draft PRs | `gh pr create --draft` after push | GitHub CLI + free hosting |
 | Remote worker (“body”) | mTLS + pairing | Oracle Always Free ARM, GCP e2-micro, home LAN |
@@ -104,6 +105,34 @@ Use **persistent / high-trust** resources for the brain and workers; push **ephe
 **Google codelab credits** and **Paperspace** fit tier **3**: spin up, run the job, export artifacts, tear down — not `privatemind wake` 24/7.
 
 Track probes and verdicts: [`FREE_TIER_CANDIDATES.md`](FREE_TIER_CANDIDATES.md), CLI `privatemind research candidate`, `privatemind research probe-api`.
+
+---
+
+## Multi-provider quota file (operator / router)
+
+If you run an external **multi-LLM router** that tracks per-provider RPM/TPM/health, keep its state JSON alongside PrivateMind recon:
+
+| Artifact | Purpose |
+|----------|---------|
+| [data/free_tier_provider_catalog.json](data/free_tier_provider_catalog.json) | Static map: provider id → base URL, docs, env vars, candidate slug |
+| [data/free_tier_quota_state.example.json](data/free_tier_quota_state.example.json) | Shape for runtime counters (`schema_version`: `2026-09-27`) |
+
+**CLI:**
+
+```bash
+# List catalog ids (should match your router's provider keys)
+privatemind research provider-catalog
+
+# Find keys in your file that are missing from the repo catalog (or vice versa)
+privatemind research quota-diff /path/to/your/quota_state.json
+
+# Seed memory candidates for every catalog provider (pending until probed)
+privatemind research seed-catalog
+```
+
+Provider ids in the catalog today: `aion_labs`, `cohere`, `google_gemini`, `mistral`, `z_ai`, `cloudflare_workers_ai`, `groq`, `huggingface`, `kilo`, `llm7`, `modelscope`, `nvidia_nim`, `ollama_cloud`, `openrouter`, `ovhcloud_ai_endpoints`, `siliconflow`.
+
+When your router adds a new key, append metadata to the catalog and a row in [FREE_TIER_CANDIDATES.md](FREE_TIER_CANDIDATES.md), then re-run `quota-diff`.
 
 ---
 
@@ -213,6 +242,13 @@ When adding integrations, prefer **approved tools + sandbox** and document spend
 | **NVIDIA NIM (hosted)** | $0 dev | Per-model RPM; [integrate.api.nvidia.com](https://integrate.api.nvidia.com/v1) | Strong catalog; production needs AI Enterprise |
 | **Gemini API** | $0 tier | Model-specific; view in AI Studio | Strong models; free tier may use prompts for product improvement * |
 | **OpenRouter `:free`** | $0 models | 50/day (20/min) default; 1000/day after $10 credits ([limits](https://openrouter.ai/docs/api/reference/limits)) | Aggregator; provider throttling at peaks |
+| **Aion Labs** | $0 daily allowance | ~15 RPM, token/day cap ([limits](https://api.aionlabs.ai/docs/rate-limits/)) | OpenAI-compatible; no card for trial allowance |
+| **Kilo Gateway `:free`** | $0 models | ~200 req/h/IP on free models ([docs](https://kilo.ai/docs/gateway/usage-and-billing)) | May route to NVIDIA trial — no confidential prompts |
+| **LLM7.io** | Free token | Token/day caps vary ([limits](https://docs.llm7.io/limits)) | Community endpoint; quotas can shrink under load |
+| **ModelScope API-Inference** | $0 for registered dev | Magicube / daily rules ([intro](https://www.modelscope.cn/docs/model-service/API-Inference/intro)) | Often needs Alibaba Cloud link; non-production |
+| **SiliconFlow (free models)** | $0 | Fixed RPM/TPM per model ([docs](https://docs.siliconflow.com/en/userguide/rate-limits/rate-limit-and-upgradation)) | Strong CN-hosted open models |
+| **OVH AI Endpoints** | Anonymous + key | 2 RPM/IP/model anonymous; 400 RPM with key ([caps](https://docs.ovhcloud.com/en/public-cloud/ai-machine-learning/ai-endpoints-capabilities/)) | EU sovereignty; OpenAI-compatible |
+| **Cohere / Mistral / Z.AI / HF / Ollama Cloud** | Varies | Check console | Catalog + `seed-catalog`; probe before relying |
 | **Heuristic (built-in)** | $0 | Unlimited | Not general intelligence — good for tests |
 
 \* Gemini free-tier data use is described in [Google pricing/docs](https://ai.google.dev/gemini-api/docs/pricing); use **paid tier** if prompts must not be used for training.
