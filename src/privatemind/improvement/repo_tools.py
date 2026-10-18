@@ -4,6 +4,7 @@ from typing import Any
 
 from privatemind.improvement.paths import WorkspaceLayout
 from privatemind.security.policy import is_sensitive_path, normalize_repo_path
+from privatemind.security.protected_manifest import is_protected_path
 from privatemind.security.redaction import redact
 from privatemind.tools.types import ToolResult
 
@@ -103,11 +104,11 @@ class RepoToolHandler:
     def _write_file(self, arguments: dict[str, Any]) -> ToolResult:
         ws = self._workspace(arguments)
         rel = normalize_repo_path(str(arguments["path"]))
-        if is_sensitive_path(rel):
+        if is_sensitive_path(rel) or is_protected_path(rel):
             return ToolResult(
                 ok=False,
                 output=None,
-                detail="security_review_required: cannot write security-sensitive path via repo_write_file",
+                detail="security_review_required: cannot write protected path via repo_write_file",
             )
         path = _safe_path(ws, rel)
         path.parent.mkdir(parents=True, exist_ok=True)

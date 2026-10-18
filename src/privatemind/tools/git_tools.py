@@ -7,6 +7,7 @@ from privatemind.audit.log import AuditLog
 from privatemind.improvement.paths import WorkspaceLayout
 from privatemind.integrations.git_cli import GitCli, GitCliResult
 from privatemind.security.policy import find_sensitive_paths, normalize_repo_path
+from privatemind.security.protected_manifest import find_protected_paths
 from privatemind.tools.types import ToolResult
 from privatemind.vault.store import CredentialVault
 
@@ -109,7 +110,7 @@ class GitToolHandler:
         paths = arguments.get("paths")
         if paths is not None:
             add_paths = [normalize_repo_path(str(p)) for p in paths]
-            blocked = find_sensitive_paths(add_paths)
+            blocked = sorted(set(find_sensitive_paths(add_paths) + find_protected_paths(add_paths)))
             if blocked:
                 return ToolResult(
                     ok=False,

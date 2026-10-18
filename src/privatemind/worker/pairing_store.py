@@ -409,6 +409,28 @@ class PairingStore:
                 return lease
         return None
 
+    def worker_reputation(self, worker_fingerprint: str, *, window: int = 20) -> dict[str, Any]:
+        with self._db.session() as conn:
+            rows = conn.execute(
+                """
+                SELECT accepted, correctness_status FROM worker_verification_events
+                WHERE worker_fingerprint = ?
+                ORDER BY id DESC
+                LIMIT ?
+                """,
+                (worker_fingerprint, window),
+            ).fetchall()
+        if not rows:
+            return {"score": 1.0, "samples": 0, "accepted_rate": None}
+        accepted = sum(int(r["accepted"]) for r in rows)
+        samples = len(rows)
+        rate = accepted / samples
+        peer = self.get_peer(worker_fingerprint) or {}
+        failures = int(peer.get("consecutive_failures") or 0)
+        penalty = min(0.5, failures * 0.1)
+        score = max(0.0, min(1.0, rate - penalty))
+        return {"score": score, "samples": samples, "accepted_rate": rate, "consecutive_failures": failures}
+
     def next_schedule_index(self, pool_size: int) -> int:
         if pool_size <= 0:
             return 0
@@ -437,5 +459,10 @@ class PairingStore:
                 continue
             if self.active_lease(worker["fingerprint"], operation):
                 eligible.append(worker)
-        eligible.sort(key=lambda w: str(w.get("paired_at") or ""))
+
+        def _sort_key(w: dict[str, Any]) -> tuple:
+            rep = self.worker_reputation(w["fingerprint"])
+            return (-float(rep["score"]), str(w.get("paired_at") or ""))
+
+        eligible.sort(key=_sort_key)
         return eligible

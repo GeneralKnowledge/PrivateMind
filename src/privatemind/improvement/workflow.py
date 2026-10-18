@@ -7,6 +7,7 @@ from typing import Any
 from privatemind.executive.tasks import Task, TaskState
 from privatemind.improvement.manifest import ImprovementManifest, ImprovementPhase
 from privatemind.security.policy import diff_touches_sensitive
+from privatemind.security.protected_manifest import diff_touches_protected
 from privatemind.trust import Provenance, TrustLevel
 
 
@@ -205,7 +206,8 @@ class ImprovementWorkflow:
         data["tests_passed"] = bool(tests.ok)
         data["verify_passed"] = bool(tests.ok)
         if diff.ok and isinstance(diff.output, dict):
-            sensitive = diff_touches_sensitive(str(diff.output.get("stdout", "")))
+            diff_text = str(diff.output.get("stdout", ""))
+            sensitive = sorted(set(diff_touches_sensitive(diff_text) + diff_touches_protected(diff_text)))
             if sensitive:
                 data["security_review_required"] = True
                 data["sensitive_paths"] = sensitive
@@ -271,6 +273,32 @@ class ImprovementWorkflow:
                 else:
                     # Local-only workspaces may lack remote; still allow record phase.
                     manifest.checkpoint("push_skipped", push.detail or "push failed")
+
+            if manifest.has_checkpoint("push_done") and not manifest.has_checkpoint("pr_created"):
+                from privatemind.integrations.gh_cli import (
+                    create_draft_pull_request,
+                    format_improvement_pr_body,
+                    gh_available,
+                )
+
+                if gh_available():
+                    pr = create_draft_pull_request(
+                        workspace=ws,
+                        branch=ctx.branch,
+                        title="Self-improvement: trusted workflow submission",
+                        body=format_improvement_pr_body(
+                            task_id=task.id,
+                            workspace=ctx.workspace,
+                            tests_passed=bool(data.get("tests_passed")),
+                        ),
+                    )
+                    if pr.ok:
+                        manifest.checkpoint("pr_created")
+                        data["pr_url"] = pr.pr_url or pr.stdout.strip()
+                        manifest.save(data)
+                    else:
+                        data["pr_error"] = (pr.stderr or pr.stdout)[:500]
+                        manifest.save(data)
 
         manifest.set_phase(ImprovementPhase.RECORD)
         task.state = TaskState.PENDING

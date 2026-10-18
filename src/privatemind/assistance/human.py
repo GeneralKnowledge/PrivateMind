@@ -14,8 +14,9 @@ class HumanRequestStatus(str, Enum):
 
 
 class HumanAssistance:
-    def __init__(self, db: Database) -> None:
+    def __init__(self, db: Database, *, on_created=None) -> None:
         self._db = db
+        self._on_created = on_created
 
     def create_request(
         self,
@@ -41,6 +42,8 @@ class HumanAssistance:
                     utc_now(),
                 ),
             )
+        if self._on_created:
+            self._on_created(req_id, question, context or {})
         return req_id
 
     def list_pending(self) -> list[dict]:

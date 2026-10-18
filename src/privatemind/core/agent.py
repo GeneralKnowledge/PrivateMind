@@ -56,8 +56,18 @@ class PrivateMindCore:
         self.memory = MemoryStore(self.db)
         self.capabilities = CapabilityRegistry(self.db)
         self.capabilities.seed_defaults()
-        self.assistance = HumanAssistance(self.db)
         self.audit = AuditLog(self.db)
+
+        def _assistance_created(req_id: str, question: str, context: dict) -> None:
+            url = self.settings.assistance_webhook_url
+            if not url:
+                return
+            from privatemind.notifications.webhook import post_assistance_webhook
+
+            outcome = post_assistance_webhook(url, question=question, request_id=req_id, context=context)
+            self.audit.record("assistance_webhook", request_id=req_id, **outcome)
+
+        self.assistance = HumanAssistance(self.db, on_created=_assistance_created)
         self.vault = CredentialVault(self.settings.data_dir)
         self.workspaces = WorkspaceLayout(self.settings.data_dir)
         self.improvements = ImprovementTracker(self.memory)
@@ -118,6 +128,7 @@ class PrivateMindCore:
             auto_approve_tool_requests=self.settings.auto_approve_tool_requests,
             on_tool_approved=_approve_tool_request if self.settings.auto_approve_tool_requests else None,
             worker=worker_tools if self.worker_hub else None,
+            capabilities=self.capabilities,
         )
         self.improvement_workflow = ImprovementWorkflow(self)
         self.wake = WakeController(
