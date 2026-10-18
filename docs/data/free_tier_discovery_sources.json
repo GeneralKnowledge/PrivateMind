@@ -1,0 +1,33 @@
+{
+  "schema_version": "2026-10-18",
+  "description": "Discovery-only sources (directories, hubs). Never auto-promote to Category A without official verification.",
+  "github_collections": [
+    {
+      "id": "pacocartones-always-free",
+      "raw_url": "https://raw.githubusercontent.com/pacocartones/free-llm-api-hub/main/collections/always-free.md",
+      "notes": "Perpetual $0 models subset; cross-check official docs."
+    }
+  ],
+  "web_directories": [
+    {
+      "id": "freellm-net",
+      "url": "https://freellm.net/",
+      "notes": "Large catalogue; discovery only."
+    },
+    {
+      "id": "freellm-site",
+      "url": "https://www.freellm.site/",
+      "notes": "68-provider aggregator; verify card flags per row."
+    },
+    {
+      "id": "llmperks",
+      "url": "https://llmperks.com/",
+      "notes": "Polls providers ~4h; good for what changed."
+    },
+    {
+      "id": "freeai-directory",
+      "url": "https://freeai.directory/providers",
+      "notes": "Provider free-tier summaries."
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "generated_at": "2026-10-18T16:17:14+00:00",
+  "category_a_provider_ids": [
+    "cloudflare_workers_ai",
+    "groq",
+    "ovhcloud_ai_endpoints"
+  ],
+  "github_sync": {
+    "mentioned_provider_ids": [
+      "aion_labs",
+      "cerebras",
+      "cloudflare_workers_ai",
+      "cohere",
+      "deepseek_api",
+      "fireworks_ai",
+      "google_gemini",
+      "groq",
+      "huggingface",
+      "kilo",
+      "llm7",
+      "mistral",
+      "modelscope",
+      "nvidia_nim",
+      "ollama_cloud",
+      "opencode_zen",
+      "openrouter",
+      "ovhcloud_ai_endpoints",
+      "pollinations_ai",
+      "sambanova_cloud",
+      "scaleway_genai",
+      "siliconflow",
+      "unorouter",
+      "vercel_ai_gateway",
+      "z_ai"
+    ],
+    "retired_mentions_in_lists": [
+      "github_models"
+    ],
+    "errors": {}
+  },
+  "gaps_from_github_lists": [],
+  "hub_collections": {
+    "pacocartones-always-free": {
+      "url": "https://raw.githubusercontent.com/pacocartones/free-llm-api-hub/main/collections/always-free.md",
+      "provider_ids_from_aliases": [
+        "ai_horde",
+        "ovhcloud_ai_endpoints",
+        "siliconflow",
+        "typhoon",
+        "z_ai"
+      ],
+      "table_names_sample": [
+        "free on a permanent basis",
+        "5 of 68 tracked providers",
+        "[Z.ai (Zhipu AI / GLM)](https://docs.z.ai/guides/overview/pricing)",
+        "[AI Horde](https://aihorde.net/)",
+        "[Typhoon (SCB 10X)](https://docs.opentyphoon.ai/en/faq/)"
+      ]
+    }
+  },
+  "provider_ids_not_in_catalog": [],
+  "hub_provider_ids": [
+    "ai_horde",
+    "ovhcloud_ai_endpoints",
+    "siliconflow",
+    "typhoon",
+    "z_ai"
+  ],
+  "hub_ids_not_in_entitlements": [],
+  "discovery_web_directories": [
+    {
+      "id": "freellm-net",
+      "url": "https://freellm.net/",
+      "notes": "Large catalogue; discovery only."
+    },
+    {
+      "id": "freellm-site",
+      "url": "https://www.freellm.site/",
+      "notes": "68-provider aggregator; verify card flags per row."
+    },
+    {
+      "id": "llmperks",
+      "url": "https://llmperks.com/",
+      "notes": "Polls providers ~4h; good for what changed."
+    },
+    {
+      "id": "freeai-directory",
+      "url": "https://freeai.directory/providers",
+      "notes": "Provider free-tier summaries."
+    }
+  ],
+  "recommended_agent_actions": [
+    "For each gaps_from_github_lists row: official docs \u2192 probe-api \u2192 update free_tier_entitlements.json",
+    "Do not promote directory rows (freellm.net, llmperks) to Category A without probe",
+    "Re-run: privatemind research discover"
+  ],
+  "fetch_errors": {}
+}

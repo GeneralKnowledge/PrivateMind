@@ -207,6 +207,106 @@
       "probe_openai_models": false,
       "docs_url": "https://pollinations.ai/",
       "notes": "Multi-modal; Pollen/auth budget — verify before Category A."
+    },
+    "cerebras": {
+      "name": "Cerebras Inference",
+      "category": "llm",
+      "eligibility_class": "B",
+      "candidate_slug": "cerebras-inference",
+      "base_url": "https://api.cerebras.ai/v1",
+      "api_key_env": ["CEREBRAS_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://inference.cerebras.ai/",
+      "notes": "Oct 2026 reports: trial/credits often card-gated — verify entitlement."
+    },
+    "fireworks_ai": {
+      "name": "Fireworks AI",
+      "category": "llm",
+      "eligibility_class": "B",
+      "candidate_slug": "fireworks-ai",
+      "base_url": "https://api.fireworks.ai/inference/v1",
+      "api_key_env": ["FIREWORKS_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://fireworks.ai/",
+      "notes": "Trial/credits in community lists — not permanent free without verification."
+    },
+    "vercel_ai_gateway": {
+      "name": "Vercel AI Gateway",
+      "category": "llm",
+      "eligibility_class": "C",
+      "candidate_slug": "vercel-ai-gateway",
+      "base_url": "",
+      "api_key_env": ["VERCEL_OIDC_TOKEN"],
+      "probe_openai_models": false,
+      "docs_url": "https://vercel.com/docs/ai-gateway",
+      "notes": "Gateway pattern; verify free model subset and auth."
+    },
+    "scaleway_genai": {
+      "name": "Scaleway Generative APIs",
+      "category": "llm",
+      "eligibility_class": "C",
+      "candidate_slug": "scaleway-genai",
+      "base_url": "https://api.scaleway.ai/v1",
+      "api_key_env": ["SCW_SECRET_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://www.scaleway.com/en/generative-apis/",
+      "notes": "EU; distinguish trial credits vs ongoing free."
+    },
+    "deepseek_api": {
+      "name": "DeepSeek API",
+      "category": "llm",
+      "eligibility_class": "C",
+      "candidate_slug": "deepseek-api",
+      "base_url": "https://api.deepseek.com/v1",
+      "api_key_env": ["DEEPSEEK_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://platform.deepseek.com/",
+      "notes": "Verify standing free allowance vs promotional balance."
+    },
+    "ai_horde": {
+      "name": "AI Horde",
+      "category": "llm",
+      "eligibility_class": "C",
+      "candidate_slug": "ai-horde",
+      "base_url": "https://aihorde.net/api/v2/",
+      "api_key_env": ["AI_HORDE_API_KEY"],
+      "probe_openai_models": false,
+      "docs_url": "https://aihorde.net/",
+      "notes": "Volunteer queue; anon key 0000000000; not standard OpenAI SLA."
+    },
+    "typhoon": {
+      "name": "Typhoon (OpenTyphoon)",
+      "category": "llm",
+      "eligibility_class": "C",
+      "candidate_slug": "typhoon-opentyphoon",
+      "base_url": "https://api.opentyphoon.ai/v1",
+      "api_key_env": ["TYPHOON_API_KEY"],
+      "probe_openai_models": true,
+      "docs_url": "https://opentyphoon.ai/",
+      "notes": "Research showcase API; Thai-focused; beta — probe for $0 entitlement."
+    },
+    "orcarouter": {
+      "name": "OrcaRouter",
+      "category": "llm",
+      "eligibility_class": "C",
+      "entry_kind": "aggregator",
+      "candidate_slug": "orcarouter",
+      "base_url": "",
+      "api_key_env": [],
+      "probe_openai_models": false,
+      "docs_url": "https://orcarouter.com/",
+      "notes": "Directory mention (llmperks); verify endpoint before routing."
+    },
+    "opencode_zen": {
+      "name": "OpenCode Zen",
+      "category": "llm",
+      "eligibility_class": "C",
+      "candidate_slug": "opencode-zen",
+      "base_url": "",
+      "api_key_env": [],
+      "probe_openai_models": false,
+      "docs_url": "https://opencode.ai/zen",
+      "notes": "Models with -free suffix; time-limited promos reported."
     }
   }
 }
