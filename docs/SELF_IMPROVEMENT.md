@@ -1,52 +1,56 @@
-# Self-Improvement Workflow (Milestone 2)
+# Self-Improvement Workflow
 
-## Objective
+## What works today
 
-Inspect an authorized repository over **git+SSH**, track limitations with evidence, implement changes in an isolated workspace, run tests, and **push a branch** for human review (no auto-merge).
+PrivateMind runs a **trusted workflow state machine** for tasks titled `Self-improvement: repository workspace`. The executive does **not** rely on the model to self-report success; phases advance in code with checkpoints stored in memory (`improvement_run`).
 
-## Prerequisites
+### Lifecycle phases
 
-- Agent is **alive** (`privatemind wake`) with GitHub account **`agent-github`** in the vault
-- Repository URL must be **`git@github.com:...`** (SSH only — no PAT/HTTP API for routine git)
+`init → discover → investigate → implement → verify → submit → record → done`
+
+| Phase | Behaviour |
+|-------|-----------|
+| **Discover** | `repo_read_file`, `repo_list_dir` (focused reads, redacted) |
+| **Investigate** | `run_tests`, `record_limitation` with evidence |
+| **Implement** | `repo_write_file` (non-sensitive paths only) |
+| **Verify** | Re-run tests; failed tests → task **failed** (no success recorded) |
+| **Submit** | `git_branch`, `git_commit`, optional `git_push` (SSH vault key) |
+| **Record** | `improvement_outcome` written by trusted core |
+
+Restart-safe: checkpoints (`clone_done`, `commit_done`, etc.) prevent repeating irreversible steps.
 
 ## Operator commands
 
 ```bash
-# Clone into ~/.privatemind/workspaces/<name>
-privatemind improve clone \
-  --repo-ssh-url git@github.com:YOUR_ORG/PrivateMind.git \
-  --workspace privatemind
+# Offline demo using bundled fixture logic (copy your repo or use seed)
+privatemind improve seed-workspace --workspace lab --from-path ./tests/fixtures/improve_repo
+privatemind improve run-local --workspace lab --from-path ./tests/fixtures/improve_repo
 
-# Enqueue self-improvement executive task
-privatemind improve start \
-  --repo-ssh-url git@github.com:YOUR_ORG/PrivateMind.git \
-  --workspace privatemind \
-  --branch cursor/self-improve \
-  --run
+# Production path (requires vault + agent-github)
+privatemind improve clone --repo-ssh-url git@github.com:ORG/PrivateMind.git --workspace privatemind
+privatemind improve start --repo-ssh-url git@github.com:ORG/PrivateMind.git --workspace privatemind --run
 ```
 
-## Allowlisted git tools (executive)
+## Allowlisted tools
 
-| Tool | Purpose |
-|------|---------|
-| `git_clone` | Clone via SSH using vault key |
-| `git_status` | Short status |
-| `git_branch` | Create/checkout branch |
-| `git_diff` | Working tree or staged diff |
-| `git_commit` | Stage paths (optional) and commit |
-| `git_push` | Push via SSH (`agent-github` default) |
-| `run_tests` | Default `python3 -m pytest -q` in workspace |
-| `record_limitation` | Persist structured limitation in memory |
+**Repository:** `repo_read_file`, `repo_list_dir`, `repo_search`, `repo_write_file`  
+**Git (SSH):** `git_clone`, `git_branch`, `git_commit`, `git_push`, `git_diff`, `git_status`, `run_tests`  
+**Memory:** `record_limitation` (trusted), `remember` (unverified tool output only)
 
-All git network operations use **`GIT_SSH_COMMAND`** with the vault private key — same path as `privatemind wake` health checks.
+## Human approval (enforced in code)
 
-## Safeguards
+- Writes/commits touching **security-sensitive paths** (`src/privatemind/vault/`, `src/privatemind/security/`, etc.) are blocked; task moves to **blocked** with `request_human_help`.
+- Model `complete_task` on self-improvement tasks is **rejected**.
+- No auto-merge to `main`; push creates a remote branch only.
 
-- Workspaces confined under `~/.privatemind/workspaces/`
-- Repository file content is **untrusted**; policies live in trusted docs/config
-- **Push does not merge** — human review on GitHub remains required
-- Security-boundary changes require explicit human approval (future: blocked paths in commit tool)
+## Credentials
 
-## Evaluation
+Vault secrets are redacted from audit logs and repo read output patterns. Tool `remember` cannot promote rows to trusted kinds (`system`, `improvement_outcome`, …).
 
-Record outcomes with `ImprovementTracker.record_outcome` (API) or memory kind `improvement_outcome` after tests pass/fail.
+## Reproduce the demonstrated cycle (tests)
+
+```bash
+pytest tests/test_self_improvement_loop.py -q
+```
+
+Uses fixture repo with intentional `calc.add` bug, full workflow, restart test, and failed-verify path.

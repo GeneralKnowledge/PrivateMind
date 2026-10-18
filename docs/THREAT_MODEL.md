@@ -29,7 +29,14 @@ This document covers v0.1 (local trusted core) and stated assumptions for upcomi
 - **Memory provenance:** Structured labels on stored knowledge.
 - **Human gate:** Assistance requests block tasks until answered.
 
-## Non-goals (v0.1)
+## Enforced mechanisms (self-improvement)
+
+- `remember` tool writes **unverified** memory; trusted kinds blocked.
+- Security-sensitive repo paths blocked for `repo_write_file` / `git_commit`.
+- Self-improvement success requires workflow `verify_passed` — not model `complete_task`.
+- Audit entries redact common secret patterns.
+
+## Non-goals (still)
 
 - Encrypted worker transport
 - Remote attestation

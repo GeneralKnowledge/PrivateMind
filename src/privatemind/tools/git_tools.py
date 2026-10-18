@@ -6,6 +6,7 @@ from typing import Any
 from privatemind.audit.log import AuditLog
 from privatemind.improvement.paths import WorkspaceLayout
 from privatemind.integrations.git_cli import GitCli, GitCliResult
+from privatemind.security.policy import find_sensitive_paths, normalize_repo_path
 from privatemind.tools.types import ToolResult
 from privatemind.vault.store import CredentialVault
 
@@ -81,6 +82,8 @@ class GitToolHandler:
             return ToolResult(ok=False, output=None, detail="Only SSH clone URLs (git@...) are allowed")
         workspace = str(arguments["workspace"])
         dest = self._layout.resolve(workspace)
+        if dest.exists() and (dest / ".git").is_dir():
+            return ToolResult(ok=True, output={"skipped": True, "reason": "already_cloned"})
         account = self._github_account(arguments)
         result = self._git.clone(account, repo_ssh_url, dest)
         return ToolResult(ok=result.ok, output=_as_output(result), detail=result.stderr if not result.ok else "")
@@ -105,7 +108,14 @@ class GitToolHandler:
         message = str(arguments["message"])
         paths = arguments.get("paths")
         if paths is not None:
-            add_paths = [str(p) for p in paths]
+            add_paths = [normalize_repo_path(str(p)) for p in paths]
+            blocked = find_sensitive_paths(add_paths)
+            if blocked:
+                return ToolResult(
+                    ok=False,
+                    output={"blocked_paths": blocked},
+                    detail="security_review_required: sensitive paths in commit",
+                )
             add_result = self._git.add(workdir, add_paths)
             if not add_result.ok:
                 return ToolResult(ok=False, output=_as_output(add_result), detail=add_result.stderr)

@@ -198,6 +198,44 @@ def improve_start_cmd(
         click.echo(json.dumps(core.run_until_idle(), indent=2))
 
 
+@improve.command("seed-workspace")
+@click.option("--workspace", required=True)
+@click.option(
+    "--from-path",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+)
+@click.pass_context
+def improve_seed_workspace(ctx: click.Context, workspace: str, from_path: Path) -> None:
+    """Copy a local directory into an isolated workspace (offline self-improvement)."""
+    from privatemind.improvement.workflow import seed_workspace_from_path
+
+    core = _core(ctx.obj["data_dir"], unlock_vault=False)
+    seed_workspace_from_path(core.workspaces, workspace, from_path)
+    click.echo(json.dumps({"workspace": workspace, "path": str(core.workspaces.resolve(workspace))}))
+
+
+@improve.command("run-local")
+@click.option("--workspace", default="local-lab")
+@click.option("--from-path", type=click.Path(exists=True, file_okay=False, path_type=Path), default=None)
+@click.option("--branch", default="cursor/self-improve-local")
+@click.pass_context
+def improve_run_local(ctx: click.Context, workspace: str, from_path: Path | None, branch: str) -> None:
+    """Seed workspace (optional), enqueue self-improvement task, run trusted workflow."""
+    from privatemind.improvement.workflow import seed_workspace_from_path
+
+    core = _core(ctx.obj["data_dir"])
+    if from_path:
+        seed_workspace_from_path(core.workspaces, workspace, from_path)
+    task = core.start_improvement(
+        repo_ssh_url="git@github.com:local/seed.git",
+        workspace=workspace,
+        branch=branch,
+    )
+    results = core.run_until_idle(max_iterations=40)
+    click.echo(json.dumps({"task_id": task.id, "steps": results}, indent=2))
+
+
 @improve.command("clone")
 @click.option("--repo-ssh-url", required=True)
 @click.option("--workspace", required=True)
