@@ -15,7 +15,7 @@ These are not goals for the agent to “optimize away”; they are the definitio
 
 ## Agent latitude (above the floor)
 
-Everything else is fair game for the agent’s own improvement loop: tooling, docs, schedulers, verifiers, UX, tests, worker job types, sandbox hardening on the body server, and items in [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md).
+Everything else is fair game for the agent’s own improvement loop: tooling, docs, schedulers, verifiers, UX, tests, worker job types, sandbox hardening on the body server, **web search / grounding tools** ([WEB_SEARCH_AND_TOOLS_OCT2026.md](WEB_SEARCH_AND_TOOLS_OCT2026.md)), and items in [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md).
 
 The executive should:
 

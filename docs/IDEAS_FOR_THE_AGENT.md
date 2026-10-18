@@ -16,6 +16,16 @@ PrivateMind’s operator bootstraps **trust floors** (vault, protected paths, no
 
 Pick what fits evidence and risk. Record limitations when something is out of scope. Prefer changes that come with tests and honest `docs/STATUS.md` updates.
 
+## Capabilities beyond inference (search, grounding, APIs)
+
+Think **out of the box**: the bottleneck is often not another LLM but **live data** (web search, instant answers, structured facts).
+
+- Read [WEB_SEARCH_AND_TOOLS_OCT2026.md](WEB_SEARCH_AND_TOOLS_OCT2026.md) and `research tool-entitlements --class A`.
+- **Brave** — SERP (`web/search`) vs **Answers** (instant grounded replies); Class B monthly credits; probe with `research probe-brave-search`.
+- **SERP alternatives** — self-hosted OpenSERP on the body server; Wikipedia for citations; avoid assuming Google CSE for new projects.
+- When you find a new search API, add a row to `free_tier_tool_entitlements.json` with official limits + conservative enforced caps — same discipline as LLM entitlements.
+- Wire through **approved tools + sandbox**; vault keys only.
+
 ## Tooling and sandbox
 
 - Tighten approved-tool isolation on the dedicated server (bubblewrap, separate UID, Landlock where available).
