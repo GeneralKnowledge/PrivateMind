@@ -34,7 +34,7 @@
 | Replay protection | `worker/pairing_store.py` |
 | False signed result rejected | `test_false_signed_result_rejected` |
 
-Remote mTLS: `tests/test_worker_mtls.py`. Multi-tenant leases — not implemented.
+Remote mTLS: `tests/test_worker_mtls.py`.
 
 ## Worker adversarial verification (M4)
 
@@ -45,12 +45,20 @@ Remote mTLS: `tests/test_worker_mtls.py`. Multi-tenant leases — not implemente
 | Auto-quarantine on consecutive failures | `test_auto_quarantine_after_failures` |
 | Restricted: verify but do not accept | `test_restricted_worker_never_auto_accepts` |
 
+## Worker scheduling and leases (M5)
+
+| Feature | Evidence |
+|---------|----------|
+| Lease expiry + max job budget | `tests/test_worker_scheduling.py` |
+| Round-robin scheduler | `test_scheduler_round_robin` |
+| Contributor onboarding + scoped schedule | `worker contributor *`, `test_contributor_scoped_schedule` |
+
 ## Not implemented
 
 - General proof systems beyond operation-specific recomputation (e.g. arbitrary compute)
-- Resource leases and multi-contributor scheduling (M5+)
 - Autonomous production promotion
+- Production-grade multi-tenant isolation beyond contributor scoping
 
 ## Next milestone
 
-**M5** — richer resource leases, scheduling, and contributor onboarding on top of the verified worker network.
+Operational hardening: dynamic tool loading after approval, `gh pr create` integration, production PKI.

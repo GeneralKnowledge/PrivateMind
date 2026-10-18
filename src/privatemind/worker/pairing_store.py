@@ -1,8 +1,11 @@
 import json
+import uuid
 from typing import Any
 
 from privatemind.db import Database
 from privatemind.executive.tasks import utc_now
+from privatemind.worker.lease_util import lease_expired, lease_jobs_remaining, lease_usable
+from privatemind.worker.trust import can_delegate
 
 
 class PairingStore:
@@ -47,9 +50,22 @@ class PairingStore:
                     correctness_status TEXT NOT NULL,
                     recorded_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS worker_contributors (
+                    contributor_id TEXT PRIMARY KEY,
+                    display_name TEXT NOT NULL,
+                    contact TEXT NOT NULL DEFAULT '',
+                    notes TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS worker_schedule_state (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    round_robin_cursor INTEGER NOT NULL DEFAULT 0
+                );
+                INSERT OR IGNORE INTO worker_schedule_state (id, round_robin_cursor) VALUES (1, 0);
                 """
             )
             self._migrate_worker_peers(conn)
+            self._migrate_worker_leases(conn)
 
     def _migrate_worker_peers(self, conn) -> None:
         cols = {row[1] for row in conn.execute("PRAGMA table_info(worker_peers)")}
@@ -63,6 +79,59 @@ class PairingStore:
             conn.execute("ALTER TABLE worker_peers ADD COLUMN consecutive_failures INTEGER NOT NULL DEFAULT 0")
         if "quarantined_at" not in cols:
             conn.execute("ALTER TABLE worker_peers ADD COLUMN quarantined_at TEXT")
+        if "contributor_id" not in cols:
+            conn.execute("ALTER TABLE worker_peers ADD COLUMN contributor_id TEXT")
+
+    def _migrate_worker_leases(self, conn) -> None:
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(worker_leases)")}
+        if "jobs_used" not in cols:
+            conn.execute("ALTER TABLE worker_leases ADD COLUMN jobs_used INTEGER NOT NULL DEFAULT 0")
+        if "contributor_id" not in cols:
+            conn.execute("ALTER TABLE worker_leases ADD COLUMN contributor_id TEXT")
+
+    def add_contributor(
+        self,
+        *,
+        display_name: str,
+        contact: str = "",
+        notes: str = "",
+        contributor_id: str | None = None,
+    ) -> str:
+        cid = contributor_id or str(uuid.uuid4())
+        with self._db.session() as conn:
+            conn.execute(
+                """
+                INSERT INTO worker_contributors (contributor_id, display_name, contact, notes, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (cid, display_name, contact, notes, utc_now()),
+            )
+        return cid
+
+    def list_contributors(self) -> list[dict[str, Any]]:
+        with self._db.session() as conn:
+            rows = conn.execute(
+                "SELECT * FROM worker_contributors ORDER BY created_at ASC"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_contributor(self, contributor_id: str) -> dict[str, Any] | None:
+        with self._db.session() as conn:
+            row = conn.execute(
+                "SELECT * FROM worker_contributors WHERE contributor_id = ?",
+                (contributor_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def assign_worker_contributor(self, worker_fingerprint: str, contributor_id: str) -> bool:
+        if not self.get_contributor(contributor_id):
+            return False
+        with self._db.session() as conn:
+            cur = conn.execute(
+                "UPDATE worker_peers SET contributor_id = ? WHERE fingerprint = ?",
+                (contributor_id, worker_fingerprint),
+            )
+            return cur.rowcount > 0
 
     def pair_worker(
         self,
@@ -254,14 +323,17 @@ class PairingStore:
         operations: list[str],
         limits: dict | None = None,
         expires_at: str | None = None,
+        contributor_id: str | None = None,
     ) -> None:
+        if contributor_id and not self.get_contributor(contributor_id):
+            raise ValueError(f"unknown contributor: {contributor_id}")
         with self._db.session() as conn:
             conn.execute(
                 """
                 INSERT INTO worker_leases (
                     lease_id, worker_fingerprint, operations_json, limits_json,
-                    expires_at, revoked, created_at
-                ) VALUES (?, ?, ?, ?, ?, 0, ?)
+                    expires_at, revoked, created_at, jobs_used, contributor_id
+                ) VALUES (?, ?, ?, ?, ?, 0, ?, 0, ?)
                 """,
                 (
                     lease_id,
@@ -270,8 +342,56 @@ class PairingStore:
                     json.dumps(limits or {}),
                     expires_at,
                     utc_now(),
+                    contributor_id,
                 ),
             )
+
+    def list_leases(self, worker_fingerprint: str | None = None) -> list[dict[str, Any]]:
+        with self._db.session() as conn:
+            if worker_fingerprint:
+                rows = conn.execute(
+                    "SELECT * FROM worker_leases WHERE worker_fingerprint = ? ORDER BY created_at DESC",
+                    (worker_fingerprint,),
+                ).fetchall()
+            else:
+                rows = conn.execute("SELECT * FROM worker_leases ORDER BY created_at DESC").fetchall()
+        return [dict(r) for r in rows]
+
+    def consume_lease_job(self, lease_id: str) -> bool:
+        with self._db.session() as conn:
+            cur = conn.execute(
+                "UPDATE worker_leases SET jobs_used = jobs_used + 1 WHERE lease_id = ? AND revoked = 0",
+                (lease_id,),
+            )
+            return cur.rowcount > 0
+
+    def lease_delegation_error(self, worker_fingerprint: str, operation: str) -> str:
+        with self._db.session() as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM worker_leases
+                WHERE worker_fingerprint = ? AND revoked = 0
+                ORDER BY created_at DESC
+                """,
+                (worker_fingerprint,),
+            ).fetchall()
+        saw_op = False
+        for row in rows:
+            lease = dict(row)
+            ops = json.loads(lease["operations_json"])
+            if operation not in ops:
+                continue
+            saw_op = True
+            if lease_usable(lease, operation):
+                return ""
+            if lease_expired(lease):
+                return "lease expired"
+            remaining = lease_jobs_remaining(lease)
+            if remaining is not None and remaining <= 0:
+                return "lease job budget exhausted"
+        if saw_op:
+            return "no usable lease for operation"
+        return "no active lease for operation"
 
     def active_lease(self, worker_fingerprint: str, operation: str) -> dict[str, Any] | None:
         with self._db.session() as conn:
@@ -284,7 +404,38 @@ class PairingStore:
                 (worker_fingerprint,),
             ).fetchall()
         for row in rows:
-            ops = json.loads(row["operations_json"])
-            if operation in ops:
-                return dict(row)
+            lease = dict(row)
+            if lease_usable(lease, operation):
+                return lease
         return None
+
+    def next_schedule_index(self, pool_size: int) -> int:
+        if pool_size <= 0:
+            return 0
+        with self._db.session() as conn:
+            row = conn.execute("SELECT round_robin_cursor FROM worker_schedule_state WHERE id = 1").fetchone()
+            cursor = int(row["round_robin_cursor"]) if row else 0
+            idx = cursor % pool_size
+            conn.execute(
+                "UPDATE worker_schedule_state SET round_robin_cursor = ? WHERE id = 1",
+                (cursor + 1,),
+            )
+            return idx
+
+    def list_delegatable_workers(
+        self,
+        operation: str,
+        *,
+        contributor_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        workers = self.list_workers()
+        eligible: list[dict[str, Any]] = []
+        for worker in workers:
+            if not can_delegate(str(worker.get("trust_state") or "")):
+                continue
+            if contributor_id and worker.get("contributor_id") != contributor_id:
+                continue
+            if self.active_lease(worker["fingerprint"], operation):
+                eligible.append(worker)
+        eligible.sort(key=lambda w: str(w.get("paired_at") or ""))
+        return eligible

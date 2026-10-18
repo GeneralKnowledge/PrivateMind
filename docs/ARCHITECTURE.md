@@ -58,6 +58,6 @@ The registry describes models and tools with operations, limits, and trust metad
 
 **Milestone 1 (implemented):** persistent core, executive, memory, capabilities, controlled tools, restart recovery, human assistance, CLI demo.
 
-**Not yet implemented:** self-improvement loop (M2), worker crypto protocol (M3), adversarial verification (M4), resource leases (M5).
+**Later milestones (now implemented):** self-improvement (M2), worker network (M3), mTLS remote workers, adversarial verification (M4), lease budgets + contributor scheduling (M5).
 
 See `docs/THREAT_MODEL.md`, `docs/SELF_IMPROVEMENT.md`, and `docs/WORKER_PROTOCOL.md` for planned interfaces.
