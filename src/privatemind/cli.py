@@ -506,6 +506,46 @@ def research_seed_catalog(ctx: click.Context, force: bool) -> None:
     click.echo(json.dumps(result, indent=2))
 
 
+@research.command("github-sources")
+@click.pass_context
+def research_github_sources(ctx: click.Context) -> None:
+    """List curated GitHub repos used for free-tier list recon."""
+    from privatemind.research.github_lists import load_github_sources, raw_github_url
+
+    meta = load_github_sources()
+    sources = []
+    for src in meta.get("sources", []):
+        if not isinstance(src, dict):
+            continue
+        repo = str(src.get("repo") or "")
+        path = str(src.get("path") or "README.md")
+        branch = str(src.get("branch") or "main")
+        sources.append(
+            {
+                "id": src.get("id"),
+                "repo": repo,
+                "raw_url": src.get("raw_url")
+                or (raw_github_url(repo=repo, path=path, branch=branch) if repo else ""),
+                "web_url": src.get("web_url"),
+                "skip_fetch": bool(src.get("skip_fetch")),
+                "notes": src.get("notes"),
+            }
+        )
+    click.echo(json.dumps({"schema_version": meta.get("schema_version"), "sources": sources}, indent=2))
+
+
+@research.command("github-sync")
+@click.option("--source-id", default=None, help="Fetch only one source id from free_tier_github_sources.json")
+@click.option("--offline", is_flag=True, help="Skip network; return empty scan (for tests)")
+@click.pass_context
+def research_github_sync(ctx: click.Context, source_id: str | None, offline: bool) -> None:
+    """Fetch GitHub list READMEs and compare mentions to the provider catalog."""
+    from privatemind.research.github_lists import sync_github_sources
+
+    result = sync_github_sources(source_id=source_id, fetch=not offline)
+    click.echo(json.dumps(result, indent=2))
+
+
 @main.group()
 @click.pass_context
 def tool_request(ctx: click.Context) -> None:

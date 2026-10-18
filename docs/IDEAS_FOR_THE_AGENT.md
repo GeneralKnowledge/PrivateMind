@@ -8,6 +8,8 @@ PrivateMind’s operator bootstraps **trust floors** (vault, protected paths, no
 
 **Probe before adopting:** `privatemind research probe-api` / `probe-nim`, then `research candidate --verdict useful|reject` with evidence. Use the **GPU spillover ladder** in the research doc — don’t run batch training on the brain VM.
 
+**GitHub lists:** Run `privatemind research github-sync` against [data/free_tier_github_sources.json](data/free_tier_github_sources.json); add catalog rows for gaps (e.g. SambaNova, UnoRouter), then verify with probes — never trust README limits without a dated check.
+
 Pick what fits evidence and risk. Record limitations when something is out of scope. Prefer changes that come with tests and honest `docs/STATUS.md` updates.
 
 ## Tooling and sandbox
