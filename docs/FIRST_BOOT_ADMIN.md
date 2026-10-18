@@ -28,7 +28,10 @@ git clone https://github.com/GeneralKnowledge/PrivateMind.git
 cd PrivateMind
 python3 -m pip install -e ".[dev]"
 privatemind init
+privatemind mode status    # expect slow_start after init
 ```
+
+Stay on **`slow_start`** until you are comfortable; use **`test`** when pairing a **new worker**. See [OPERATIONAL_MODES.md](OPERATIONAL_MODES.md).
 
 ### 2. Vault (you alone)
 
@@ -68,9 +71,14 @@ Target `"level": "alive"` with vault unlocked.
 
 ### 6. First wake
 
+Prefer small steps while in `slow_start`:
+
 ```bash
-privatemind wake --run
-privatemind status
+privatemind wake
+privatemind tick --steps 1
+privatemind status    # includes operational_mode
+# later: privatemind wake --run
+privatemind mode set production   # when ready for normal throughput
 ```
 
 Confirm post-wake bootstrap task ran. Skim assistance queue — expect **batched** asks over time, not spam every minute.

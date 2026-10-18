@@ -37,8 +37,17 @@ class WakeController:
         return assess_readiness(self.vault).to_dict()
 
     def wake(self, *, run_health_checks: bool = True) -> dict[str, Any]:
+        from privatemind.config import Settings
+        from privatemind.operational.mode import operational_status
+
+        settings = Settings(data_dir=self.runtime_dir.parent)
+        result: dict[str, Any] = {
+            "operational_mode": operational_status(
+                settings.data_dir, env_mode=settings.operational_mode
+            ),
+        }
         report = assess_readiness(self.vault)
-        result: dict[str, Any] = {"readiness": report.to_dict(), "health": [], "tasks": []}
+        result.update({"readiness": report.to_dict(), "health": [], "tasks": []})
 
         if report.level != ReadinessLevel.ALIVE:
             self.memory.upsert(
@@ -63,6 +72,15 @@ class WakeController:
             provenance=Provenance.TRUSTED_CORE,
             trust_level=TrustLevel.VERIFIED,
         )
+        mode_name = result.get("operational_mode", {}).get("mode")
+        if mode_name:
+            self.memory.upsert(
+                kind="system",
+                key="lifecycle.operational_mode",
+                content=str(mode_name),
+                provenance=Provenance.TRUSTED_CORE,
+                trust_level=TrustLevel.VERIFIED,
+            )
         self.memory.upsert(
             kind="system",
             key="accounts.primary_llm",

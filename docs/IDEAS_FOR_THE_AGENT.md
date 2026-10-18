@@ -36,6 +36,7 @@ Optional patterns — same vein as [AGENT_MIND_LAYERS.md](AGENT_MIND_LAYERS.md).
 
 ### Rhythm (not always expanding)
 
+- **Operational mode** — respect `research operational-mode` / `mode status`: in **slow_start** or **test**, do not blast probes or long `wake --run` loops; use maintain/reflect work instead.
 - **Seasons** — modes: **expand** (food + domains) vs **consolidate** (tests, docs, graph cleanup) vs **outreach** (playbooks, want-ads).
 - **Sabbatical** — N cycles: no new capability domains; only harden and fix limitations.
 - **Idle that counts** — dedupe catalogues, reconcile `last_verified`, close stale assistance, draft `solo-operator` playbook.

@@ -206,6 +206,13 @@ class PrivateMindCore:
         )
 
     def tick(self, *, max_steps: int = 1) -> list[dict[str, Any]]:
+        from privatemind.operational.mode import cap_executive_steps
+
+        max_steps = cap_executive_steps(
+            self.settings.data_dir,
+            max_steps,
+            env_mode=self.settings.operational_mode,
+        )
         results: list[dict[str, Any]] = []
         for _ in range(max_steps):
             task = self.tasks.next_runnable()
@@ -215,6 +222,12 @@ class PrivateMindCore:
         return results
 
     def run_until_idle(self, *, max_iterations: int = 50) -> list[dict[str, Any]]:
+        from privatemind.operational.mode import cap_idle_iterations
+
+        max_iterations = min(
+            max_iterations,
+            cap_idle_iterations(self.settings.data_dir, env_mode=self.settings.operational_mode),
+        )
         all_results: list[dict[str, Any]] = []
         for _ in range(max_iterations):
             batch = self.tick(max_steps=1)

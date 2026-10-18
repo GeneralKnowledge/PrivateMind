@@ -1,0 +1,40 @@
+{
+  "schema_version": "2026-10-18",
+  "doc": "docs/OPERATIONAL_MODES.md",
+  "modes": {
+    "slow_start": {
+      "label": "Slow start (setup)",
+      "description": "First days on a new brain: low executive throughput, gentle probes, fewer bursts.",
+      "max_executive_steps_per_tick": 2,
+      "max_run_until_idle_iterations": 8,
+      "probe_min_interval_seconds": 120,
+      "external_api_budget_multiplier": 0.25,
+      "max_assistance_creates_per_day": 3,
+      "worker_job_budget_multiplier": 0.5,
+      "new_worker_smoke_only": true
+    },
+    "test": {
+      "label": "Test / staging",
+      "description": "Exercise new workers, tools, or branches without production quotas.",
+      "max_executive_steps_per_tick": 3,
+      "max_run_until_idle_iterations": 12,
+      "probe_min_interval_seconds": 60,
+      "external_api_budget_multiplier": 0.1,
+      "max_assistance_creates_per_day": 5,
+      "worker_job_budget_multiplier": 0.25,
+      "new_worker_smoke_only": true
+    },
+    "production": {
+      "label": "Production",
+      "description": "Normal ceilings; agent still respects entitlements and request budgets in docs.",
+      "max_executive_steps_per_tick": 50,
+      "max_run_until_idle_iterations": 50,
+      "probe_min_interval_seconds": 0,
+      "external_api_budget_multiplier": 1.0,
+      "max_assistance_creates_per_day": null,
+      "worker_job_budget_multiplier": 1.0,
+      "new_worker_smoke_only": false
+    }
+  },
+  "default_for_new_install": "slow_start"
+}

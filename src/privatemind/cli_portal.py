@@ -41,12 +41,17 @@ def portal_serve(host: str | None, port: int | None, data_dir: Path | None) -> N
     core = PrivateMindCore(settings=settings)
 
     def status_provider() -> dict:
+        from privatemind.operational.mode import operational_status
+
         report = core.wake.check()
         return {
             "readiness_level": report.get("level"),
             "ready": report.get("level") == "alive",
             "checks": report.get("checks"),
             "missing": report.get("missing"),
+            "operational_mode": operational_status(
+                settings.data_dir, env_mode=settings.operational_mode
+            ).get("mode"),
         }
 
     click.echo(f"PrivateMind portal http://{bind_host}:{bind_port}/ (Ctrl+C to stop)")

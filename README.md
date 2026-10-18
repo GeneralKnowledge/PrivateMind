@@ -20,6 +20,8 @@ privatemind portal serve   # http://127.0.0.1:8780
 
 Details: [docs/PORTAL.md](docs/PORTAL.md).
 
+**Slow start / test / production:** `privatemind init` sets **`slow_start`** throttles (ticks, probes, idle loops). [docs/OPERATIONAL_MODES.md](docs/OPERATIONAL_MODES.md) — use **`test`** for new workers.
+
 ---
 
 ## 0. What you are setting up

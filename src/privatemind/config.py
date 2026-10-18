@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     tool_sandbox_timeout_seconds: int = 120
     tool_sandbox_network: bool = False
 
+    # slow_start | test | production — env overrides {data_dir}/operational_mode.json
+    operational_mode: str | None = None
+
     @property
     def db_path(self) -> Path:
         return self.data_dir / self.db_name
