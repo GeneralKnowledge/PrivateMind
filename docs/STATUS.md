@@ -34,14 +34,23 @@
 | Replay protection | `worker/pairing_store.py` |
 | False signed result rejected | `test_false_signed_result_rejected` |
 
-WAN mTLS, multi-tenant leases, quarantine — not implemented.
+Remote mTLS: `tests/test_worker_mtls.py`. Multi-tenant leases — not implemented.
+
+## Worker adversarial verification (M4)
+
+| Feature | Evidence |
+|---------|----------|
+| Schema + input_hash checks | `tests/test_worker_adversarial.py` |
+| Trust states (restricted / quarantined / revoked) | `worker/trust.py`, `worker pair trust *` CLI |
+| Auto-quarantine on consecutive failures | `test_auto_quarantine_after_failures` |
+| Restricted: verify but do not accept | `test_restricted_worker_never_auto_accepts` |
 
 ## Not implemented
 
-- Full adversarial worker pipeline (M4 generalisation beyond sha256)
+- General proof systems beyond operation-specific recomputation (e.g. arbitrary compute)
 - Resource leases and multi-contributor scheduling (M5+)
 - Autonomous production promotion
 
 ## Next milestone
 
-Implement **local worker process** against `worker/contract.py`: pairing, signed job/response envelopes, and verification hooks feeding existing `tool_trace` / `VerificationRecord` without exposing the vault or full memory DB.
+**M5** — richer resource leases, scheduling, and contributor onboarding on top of the verified worker network.

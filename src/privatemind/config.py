@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     worker_port: int = 8765
     worker_use_mtls: bool = True
     worker_pki_dir_name: str = "mtls"
+    worker_quarantine_failure_threshold: int = 3
 
     @property
     def db_path(self) -> Path:
