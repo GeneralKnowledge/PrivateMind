@@ -16,6 +16,8 @@ Prepare **separate accounts** for the agent (recommended):
 | **GitHub user** | Dedicated user with SSH deploy key / SSH key — **git CLI over SSH only** (no PAT in HTTP URLs) |
 | **Test server** | SSH host for experiments (optional but supported) |
 
+The agent is instructed to **ask for more** over time — dedicated **email**, **SMS/phone**, **crypto wallet**, and eventually **fiat** within caps ([docs/AGENT_CAPABILITY_MANDATE.md](docs/AGENT_CAPABILITY_MANDATE.md)). You provision; it discovers and requests via assistance tasks — it does not open bank accounts or use your personal inbox.
+
 Give the agent only what it needs. Revoke by disabling or deleting an account in the vault.
 
 **Building without paid services:** Start with the October 2026 catalogue [docs/FREE_TIER_CATALOG_OCT2026.md](docs/FREE_TIER_CATALOG_OCT2026.md) and machine-readable [docs/data/free_tier_entitlements.json](docs/data/free_tier_entitlements.json) (Categories A/B/C, official vs enforced limits). Broader notes: [docs/FREE_TIER_RESEARCH.md](docs/FREE_TIER_RESEARCH.md). CLI: `privatemind research entitlements --class A`, `probe-api`, `github-sync` (discovery only).
