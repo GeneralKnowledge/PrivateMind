@@ -31,6 +31,8 @@ Suggested playbook audiences (add more as layers grow):
 - **compute_donor** — worker pairing, mTLS, no keys yet (**bronze** tier)
 - **key_donor** — scoped API keys, which services, rotation, revoke (**silver** tier)
 - **hybrid_donor** — machine + keys (**gold** if sustained + attested; see [AGENT_ARCHITECTURE_IDEAS.md](AGENT_ARCHITECTURE_IDEAS.md) affinity)
+- **storage_donor** — S3/R2/B2 bucket or sync folder only ([DONOR_RESOURCE_TIERS.md](DONOR_RESOURCE_TIERS.md))
+- **traffic_only_donor** — egress relay without compute shell
 
 **Contribution menu:** document bronze / silver / gold in each playbook header. **Want-ads:** optional `docs/helpers/wants.md` for honest capacity requests. **Donor exit ritual:** checklist you own — revoke keys, drain jobs, update self-map graph, archive playbook row in JSON.
 

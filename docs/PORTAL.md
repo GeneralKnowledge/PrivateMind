@@ -42,8 +42,10 @@ Agent-written detail: [DONOR_AND_HELPER_INSTRUCTIONS.md](DONOR_AND_HELPER_INSTRU
 | GET | `/instructions/admin` | First-boot admin markdown (rendered plain) |
 | GET | `/instructions/donor` | Donor getting started |
 | GET | `/instructions/helper` | Helper getting started |
+| GET | `/instructions/donor-resources` | Commitment levels, CPU/GPU/storage, S3 & sync drives |
+| GET | `/api/v1/donor/catalog` | JSON menu: levels, `resource_kinds`, `storage_backends` |
 | GET | `/api/v1/status` | JSON: readiness level, portal version, intent count |
-| POST | `/api/v1/donor/intent` | JSON body: `display_name`, `contact`, `offer`, `notes` |
+| POST | `/api/v1/donor/intent` | See [DONOR_RESOURCE_TIERS.md](DONOR_RESOURCE_TIERS.md) — `offer` required; optional `commitment_level`, `resource_kinds[]`, `storage_backends[]`, `paid_service_donation` |
 | GET | `/api/v1/donor/intents` | List intents (admin; localhost only by default) |
 
 Intents append to `{data_dir}/portal/donor_intents.jsonl`. **You** approve before any worker pairing or key placement.

@@ -486,6 +486,28 @@ def research_self_model_status(ctx: click.Context) -> None:
     click.echo(json.dumps(self_model_status(), indent=2))
 
 
+@research.command("donor-resources")
+@click.pass_context
+def research_donor_resources(ctx: click.Context) -> None:
+    """Donor commitment levels, resource kinds, and storage backends catalog."""
+    from privatemind.research.donor_resources import load_donor_resource_catalog
+
+    cat = load_donor_resource_catalog()
+    click.echo(
+        json.dumps(
+            {
+                "schema_version": cat.get("schema_version"),
+                "doc": cat.get("doc"),
+                "commitment_levels": cat.get("commitment_levels"),
+                "resource_kinds": cat.get("resource_kinds"),
+                "storage_backends": cat.get("storage_backends"),
+                "legacy_offer_tiers": cat.get("legacy_offer_tiers"),
+            },
+            indent=2,
+        )
+    )
+
+
 @research.command("helper-playbooks")
 @click.pass_context
 def research_helper_playbooks(ctx: click.Context) -> None:

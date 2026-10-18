@@ -1,0 +1,151 @@
+{
+  "schema_version": "2026-10-18",
+  "title": "Donor commitment levels, resource kinds, and storage backends",
+  "doc": "docs/DONOR_RESOURCE_TIERS.md",
+  "operator_note": "Storage classes A/B/C mirror entitlement discipline — agent verifies before routing production artifacts.",
+  "commitment_levels": [
+    {
+      "id": "traffic_only",
+      "label": "Traffic / egress only",
+      "description": "Allowlisted HTTPS relay; no shell or arbitrary code on donor box"
+    },
+    {
+      "id": "script_sandbox",
+      "label": "Minor script / sandbox",
+      "description": "Short-lived capped jobs (bubblewrap); small CPU/RAM/time budget"
+    },
+    {
+      "id": "medium_worker",
+      "label": "Medium worker",
+      "description": "Paired worker serve; scheduled jobs; optional scoped API keys"
+    },
+    {
+      "id": "full_worker",
+      "label": "Full worker",
+      "description": "Long-lived worker with broader job types; still no brain vault or memory DB"
+    }
+  ],
+  "legacy_offer_tiers": [
+    { "id": "bronze", "maps_to": "medium_worker", "keys": false },
+    { "id": "silver", "maps_to": "medium_worker", "keys": true },
+    { "id": "gold", "maps_to": "full_worker", "keys": true }
+  ],
+  "resource_kinds": [
+    { "id": "egress_bandwidth", "label": "Egress / bandwidth" },
+    { "id": "cpu_time", "label": "CPU time" },
+    { "id": "gpu_time", "label": "GPU time" },
+    { "id": "ram", "label": "RAM headroom" },
+    { "id": "disk_local", "label": "Local disk cache" },
+    { "id": "object_storage", "label": "Object storage (S3-compatible)" },
+    { "id": "sync_folder_share", "label": "Sync folder (Drive/Dropbox/OneDrive)" }
+  ],
+  "storage_backends": [
+    {
+      "id": "s3_donated_bucket",
+      "label": "Donated S3 bucket (AWS or compatible)",
+      "eligibility_class": "B",
+      "free_tier_assumed": false,
+      "s3_api": true,
+      "notes": "Donor-created bucket + scoped IAM; preferred for artifacts"
+    },
+    {
+      "id": "cloudflare_r2",
+      "label": "Cloudflare R2",
+      "eligibility_class": "B",
+      "free_tier_assumed": true,
+      "s3_api": true,
+      "notes": "Check current R2 free operations/storage on official docs"
+    },
+    {
+      "id": "backblaze_b2",
+      "label": "Backblaze B2",
+      "eligibility_class": "B",
+      "free_tier_assumed": true,
+      "s3_api": true,
+      "notes": "S3-compatible API; verify caps"
+    },
+    {
+      "id": "wasabi",
+      "label": "Wasabi (donated paid)",
+      "eligibility_class": "C",
+      "free_tier_assumed": false,
+      "s3_api": true,
+      "notes": "Accept only as explicit paid donation"
+    },
+    {
+      "id": "aws_s3_free_tier",
+      "label": "AWS S3 (free tier / trial)",
+      "eligibility_class": "C",
+      "free_tier_assumed": true,
+      "s3_api": true,
+      "notes": "Often time-limited; agent must record last_verified"
+    },
+    {
+      "id": "oracle_object_storage_free",
+      "label": "Oracle Cloud Object Storage (Always Free)",
+      "eligibility_class": "C",
+      "free_tier_assumed": true,
+      "s3_api": true,
+      "notes": "Region and capacity constraints"
+    },
+    {
+      "id": "github_releases_artifacts",
+      "label": "GitHub Releases / Actions artifacts",
+      "eligibility_class": "B",
+      "free_tier_assumed": true,
+      "s3_api": false,
+      "notes": "Retention and size caps"
+    },
+    {
+      "id": "google_drive_free",
+      "label": "Google Drive (free / Workspace)",
+      "eligibility_class": "C",
+      "free_tier_assumed": true,
+      "s3_api": false,
+      "sync_api": true,
+      "notes": "OAuth or shared folder; not operator personal drive"
+    },
+    {
+      "id": "dropbox_free",
+      "label": "Dropbox",
+      "eligibility_class": "C",
+      "free_tier_assumed": true,
+      "s3_api": false,
+      "sync_api": true,
+      "notes": "Scoped app/folder; rate limits"
+    },
+    {
+      "id": "onedrive_free",
+      "label": "Microsoft OneDrive",
+      "eligibility_class": "C",
+      "free_tier_assumed": true,
+      "s3_api": false,
+      "sync_api": true,
+      "notes": "Graph API; automation limits"
+    },
+    {
+      "id": "mega",
+      "label": "MEGA",
+      "eligibility_class": "C",
+      "free_tier_assumed": true,
+      "s3_api": false,
+      "notes": "Probe API/automation before trust"
+    },
+    {
+      "id": "ipfs_public_pin",
+      "label": "Public IPFS pin",
+      "eligibility_class": "C",
+      "free_tier_assumed": true,
+      "s3_api": false,
+      "notes": "Public integrity; not private storage"
+    }
+  ],
+  "intent_fields_suggested": [
+    "commitment_level",
+    "resource_kinds",
+    "storage_backends",
+    "paid_service_donation",
+    "estimated_monthly_usd",
+    "notes"
+  ]
+}

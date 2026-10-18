@@ -30,8 +30,13 @@ def append_donor_intent(
     contact: str,
     offer: str,
     notes: str = "",
+    commitment_level: str | None = None,
+    resource_kinds: list[str] | None = None,
+    storage_backends: list[str] | None = None,
+    paid_service_donation: bool | None = None,
+    estimated_monthly_usd: float | None = None,
 ) -> dict[str, Any]:
-    record = {
+    record: dict[str, Any] = {
         "intent_id": str(uuid.uuid4()),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "display_name": display_name.strip(),
@@ -40,6 +45,16 @@ def append_donor_intent(
         "notes": notes.strip(),
         "status": "pending",
     }
+    if commitment_level:
+        record["commitment_level"] = commitment_level.strip()
+    if resource_kinds:
+        record["resource_kinds"] = [str(k).strip() for k in resource_kinds if str(k).strip()]
+    if storage_backends:
+        record["storage_backends"] = [str(b).strip() for b in storage_backends if str(b).strip()]
+    if paid_service_donation is not None:
+        record["paid_service_donation"] = bool(paid_service_donation)
+    if estimated_monthly_usd is not None:
+        record["estimated_monthly_usd"] = estimated_monthly_usd
     path = intents_path(data_dir)
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(record) + "\n")

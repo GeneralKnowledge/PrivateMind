@@ -54,7 +54,8 @@ Optional patterns — same vein as [AGENT_MIND_LAYERS.md](AGENT_MIND_LAYERS.md).
 
 ### Donors, helpers (you write instructions)
 
-- **Contribution menu** — bronze compute / silver scoped keys / gold sustained + attested playbooks.
+- **Resource catalog** — `research donor-resources`; map intents to graph (`cpu_time`, `gpu_time`, `object_storage`, sync_folder). Free-first; accept **paid_service_donation** when scoped ([DONOR_RESOURCE_TIERS.md](DONOR_RESOURCE_TIERS.md)).
+- **Contribution menu** — traffic_only → script_sandbox → medium_worker → full_worker; plus bronze/silver/gold keys.
 - **Want-ads** — honest markdown: *seeking EU ARM, mTLS ok, Groq optional*.
 - **Donor exit ritual** — revoke keys, drain queue, update graph, archive playbook.
 - **Symbiosis line** — one sentence what donor might get — no false SLAs.

@@ -143,6 +143,34 @@
       "examples": ["Body server", "Oracle always-free ARM"]
     },
     {
+      "id": "donor_object_storage",
+      "label": "Donor or free-tier object storage (S3-compatible)",
+      "priority": "medium",
+      "vault_kind_today": null,
+      "vault_kind_planned": "object_storage",
+      "trust_level_required": 1,
+      "discovery": [
+        "docs/DONOR_RESOURCE_TIERS.md",
+        "docs/data/donor_resource_catalog.json",
+        "privatemind research donor-resources"
+      ],
+      "operator_deliverable": "Scoped bucket creds in vault or donor-colocated S3 on worker",
+      "examples": ["Cloudflare R2", "Backblaze B2", "donated S3 prefix"],
+      "never_automate": ["Operator personal Drive/Dropbox without scoped donor intent"]
+    },
+    {
+      "id": "donor_sync_folder",
+      "label": "Donor sync folder (Drive / Dropbox / OneDrive)",
+      "priority": "low",
+      "vault_kind_today": null,
+      "vault_kind_planned": "sync_storage",
+      "trust_level_required": 1,
+      "discovery": ["docs/data/donor_resource_catalog.json — Class C backends"],
+      "operator_deliverable": "OAuth or folder share via vault; approved tool only",
+      "examples": ["Shared artifact folder", "Read-only export drop"],
+      "never_automate": ["Bulk sync of operator personal cloud"]
+    },
+    {
       "id": "egress_api_proxy",
       "label": "API egress via worker/proxy (IP & region)",
       "priority": "medium",

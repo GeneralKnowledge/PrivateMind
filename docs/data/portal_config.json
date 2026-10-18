@@ -10,7 +10,8 @@
   "instruction_paths": {
     "admin": "docs/FIRST_BOOT_ADMIN.md",
     "donor": "docs/CONTRIBUTOR_GETTING_STARTED.md",
-    "helper": "docs/HELPER_GETTING_STARTED.md"
+    "helper": "docs/HELPER_GETTING_STARTED.md",
+    "donor-resources": "docs/DONOR_RESOURCE_TIERS.md"
   },
   "features": {
     "donor_intent_api": true,

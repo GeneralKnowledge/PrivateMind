@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 from privatemind.portal.config import instruction_path, load_portal_config
 from privatemind.portal.intents import append_donor_intent, list_donor_intents
+from privatemind.research.donor_resources import load_donor_resource_catalog
 
 PORTAL_VERSION = "0.1.0-skeleton"
 
@@ -25,9 +26,11 @@ def _html_hub() -> str:
 <li><a href="/instructions/admin">First-boot administrator</a></li>
 <li><a href="/instructions/donor">Contributor / donor</a></li>
 <li><a href="/instructions/helper">Helper (no servers)</a></li>
+<li><a href="/instructions/donor-resources">Resource tiers &amp; storage</a></li>
+<li><a href="/api/v1/donor/catalog">Donor catalog (JSON)</a></li>
 <li><a href="/api/v1/status">API status (JSON)</a></li>
 </ul>
-<p>POST donor intent: <code>/api/v1/donor/intent</code> (JSON)</p>
+<p>POST donor intent: <code>/api/v1/donor/intent</code> (JSON — see catalog for fields)</p>
 </body></html>"""
 
 
@@ -83,6 +86,21 @@ def make_handler(
                     {"intents": list_donor_intents(data_dir)},
                 )
                 return
+            if path == "/api/v1/donor/catalog":
+                cat = load_donor_resource_catalog()
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "schema_version": cat.get("schema_version"),
+                        "commitment_levels": cat.get("commitment_levels"),
+                        "resource_kinds": cat.get("resource_kinds"),
+                        "storage_backends": cat.get("storage_backends"),
+                        "legacy_offer_tiers": cat.get("legacy_offer_tiers"),
+                        "intent_fields_suggested": cat.get("intent_fields_suggested"),
+                        "doc": cat.get("doc"),
+                    },
+                )
+                return
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
         def do_POST(self) -> None:  # noqa: N802
@@ -101,12 +119,43 @@ def make_handler(
                 if not str(payload.get(field) or "").strip():
                     self._send_json(HTTPStatus.BAD_REQUEST, {"error": f"missing_{field}"})
                     return
+            catalog = load_donor_resource_catalog()
+            level_ids = {r["id"] for r in catalog.get("commitment_levels", []) if r.get("id")}
+            kind_ids = {r["id"] for r in catalog.get("resource_kinds", []) if r.get("id")}
+            backend_ids = {r["id"] for r in catalog.get("storage_backends", []) if r.get("id")}
+            commitment = str(payload.get("commitment_level") or "").strip() or None
+            if commitment and commitment not in level_ids:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_commitment_level"})
+                return
+            kinds = payload.get("resource_kinds") or []
+            if kinds and not isinstance(kinds, list):
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "resource_kinds_must_be_array"})
+                return
+            for k in kinds:
+                if str(k) not in kind_ids:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": f"invalid_resource_kind:{k}"})
+                    return
+            backends = payload.get("storage_backends") or []
+            if backends and not isinstance(backends, list):
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "storage_backends_must_be_array"})
+                return
+            for b in backends:
+                if str(b) not in backend_ids:
+                    self._send_json(HTTPStatus.BAD_REQUEST, {"error": f"invalid_storage_backend:{b}"})
+                    return
+            est = payload.get("estimated_monthly_usd")
+            est_f = float(est) if est is not None and est != "" else None
             record = append_donor_intent(
                 data_dir,
                 display_name=str(payload["display_name"]),
                 contact=str(payload["contact"]),
                 offer=str(payload["offer"]),
                 notes=str(payload.get("notes") or ""),
+                commitment_level=commitment,
+                resource_kinds=[str(k) for k in kinds] if kinds else None,
+                storage_backends=[str(b) for b in backends] if backends else None,
+                paid_service_donation=payload.get("paid_service_donation"),
+                estimated_monthly_usd=est_f,
             )
             self._send_json(HTTPStatus.CREATED, {"intent": record})
 
