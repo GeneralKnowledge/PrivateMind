@@ -37,6 +37,10 @@ privatemind improve start --repo-ssh-url git@github.com:ORG/PrivateMind.git --wo
 **Git (SSH):** `git_clone`, `git_branch`, `git_commit`, `git_push`, `git_diff`, `git_status`, `run_tests`  
 **Memory:** `record_limitation` (trusted), `remember` (unverified tool output only)
 
+## Graduated autonomy
+
+Operators set the **floor** (vault, protected paths, no auto-merge to `main`). Above that, the agent chooses its own priorities. See [GRADUATED_AUTONOMY.md](GRADUATED_AUTONOMY.md) and optional suggestions in [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md) — not a mandatory backlog.
+
 ## Human approval (enforced in code)
 
 - Writes/commits touching **security-sensitive paths** (`src/privatemind/vault/`, `src/privatemind/security/`, etc.) are blocked; task moves to **blocked** with `request_human_help`.

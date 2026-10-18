@@ -117,7 +117,14 @@ class PrivateMindCore:
             self.audit.record("tool_request_auto_approved", request_id=req_id, capability_id=cap_id)
             return cap_id
 
+        from privatemind.tools.sandbox import SandboxProfile
+
         worker_tools = WorkerToolHandler(self.worker_hub)
+        sandbox_defaults = SandboxProfile(
+            memory_mb=self.settings.tool_sandbox_memory_mb,
+            timeout_seconds=self.settings.tool_sandbox_timeout_seconds,
+            network_enabled=self.settings.tool_sandbox_network,
+        )
         self.tools = ToolExecutor(
             self.memory,
             self.assistance,
@@ -129,6 +136,8 @@ class PrivateMindCore:
             on_tool_approved=_approve_tool_request if self.settings.auto_approve_tool_requests else None,
             worker=worker_tools if self.worker_hub else None,
             capabilities=self.capabilities,
+            runtime_dir=self.settings.runtime_dir,
+            sandbox_defaults=sandbox_defaults,
         )
         self.improvement_workflow = ImprovementWorkflow(self)
         self.wake = WakeController(

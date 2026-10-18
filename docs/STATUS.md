@@ -22,7 +22,7 @@
 ## Partial / operator-dependent
 
 - Live `git push` to GitHub requires real `agent-github` vault key and remote.
-- `gh pr create` not integrated — open PR manually on pushed branch.
+- Draft `gh pr create` runs when `gh` is on PATH; merge to `main` remains manual.
 - LLM planner optional for non-workflow tasks; heuristic demo still Milestone 1 only.
 
 ## Worker network (M3 — local)
@@ -65,18 +65,32 @@ Remote mTLS: `tests/test_worker_mtls.py`.
 |---------|----------|
 | Protected-path manifest (writes/commits) | `security/protected_manifest.py`, `test_protected_path_blocks_write` |
 | Draft PR via `gh` after self-improvement push | `integrations/gh_cli.py`, workflow submit phase |
-| Approved tool subprocess runner | `tools/approved_runner.py`, `tool-request approve --runner-arg` |
+| Approved tool **sandboxed** runner | `tools/sandbox.py`, `approved_runner.py`, env scrub + rlimits + isolated cwd |
 | Memory trust promotion CLI | `memory promote`, `test_memory_promotion_transitions` |
 | Worker health in setup-check / status | `activation/worker_health.py` |
 | Reputation-aware scheduling sort | `pairing_store.worker_reputation` |
 | Pluggable worker verifiers | `worker/verifier_registry.py` |
 | Assistance webhook | `PRIVATE_MIND_ASSISTANCE_WEBHOOK_URL` |
 
-## Next steps (not yet implemented)
+## Tool sandbox (approved tools)
 
-- Production PKI rotation / cert expiry monitoring (beyond lab `pki-init`)
-- Strong sandbox for approved tools (network/fs cgroups, separate UID)
+| Feature | Evidence |
+|---------|----------|
+| Scrubbed env (no vault tokens in child) | `test_sandbox_env_not_visible_to_runner` |
+| Isolated cwd under `runtime/tool_sandbox/` | `test_sandboxed_runner_uses_isolated_cwd` |
+| CPU / memory / fd rlimits | `tools/sandbox.py`, `test_memory_limit_can_stop_runaway` |
+| Optional network namespace | `unshare -n` when permitted on host; else document bubblewrap on body server |
+
+Configure defaults: `PRIVATE_MIND_TOOL_SANDBOX_*`. Per-tool overrides via `tool-request approve --sandbox-memory-mb`, `--sandbox-network`.
+
+## Agent-directed improvements
+
+Optional ideas live in [IDEAS_FOR_THE_AGENT.md](IDEAS_FOR_THE_AGENT.md). Philosophy: [GRADUATED_AUTONOMY.md](GRADUATED_AUTONOMY.md).
+
+## Next steps (for the agent or operator — not a central roadmap)
+
+- Harden sandbox on dedicated server (bubblewrap, dedicated UID, Landlock) — see IDEAS doc
+- Production PKI rotation / cert expiry monitoring
 - Sybil-resistant contributor policies beyond reputation sorting
-- Autonomous promotion remains out of scope — human merge to main
-- Optional Slack-native assistance (webhook is generic JSON today)
-- Register additional worker verifiers for non-hash compute jobs with deterministic checks
+- Human merge to `main` remains the promotion gate
+- Additional worker verifiers for new job types
