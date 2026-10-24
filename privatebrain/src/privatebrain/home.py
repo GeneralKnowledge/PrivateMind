@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -96,10 +98,33 @@ def read_jsonl(path: Path) -> list[dict]:
 
 def write_jsonl(path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def append_jsonl(path: Path, row: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(row) + "\n")
+
+
+@contextmanager
+def locked(path: Path):
+    """An exclusive advisory lock beside `path`, so the CLI and a running loop do not
+    lose each other's writes to the same queue."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path.with_name(path.name + ".lock"), "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def write_json(path: Path, obj) -> None:
+    """Write-then-rename, so a crash leaves the old file or the new one, never half of one."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(obj, indent=2, default=str) + "\n", encoding="utf-8")
+    os.replace(tmp, path)

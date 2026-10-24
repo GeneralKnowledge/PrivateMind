@@ -1,12 +1,28 @@
 # PrivateBrain
 
-A persistent agent whose **mind is an editable harness** (prompts, guardrails,
-memory, tool guidance, skills, subagents, scripts, plugins) and which **improves
-that mind itself** with [harness²](https://github.com/GeneralKnowledge/harness2)'s
-Propose–Probe–Compose recursion, above an operator **floor** it cannot edit.
+**A persistent personal agent that keeps running without a model, learns only from evidence, and
+never crosses its owner's floor.**
 
-This is a fresh rebuild of the PrivateMind concept, not a port of its code. Read
-[DESIGN.md](DESIGN.md) for how the needs / executive / floor layers map onto it.
+PrivateBrain runs as a loop on your machine. It keeps a clock and a journal, watches its own
+health and connectivity, and does what it can with ordinary code: exact sums, calendar clashes,
+searching what it has stored. Work that needs a language model waits honestly while the model
+is unreachable ("I can't do this right now"), which is different from work it has no way to do
+("I don't know how"). When the model comes back, the waiting work runs, and the results become
+memory it can search offline.
+
+Its **mind** is not code but an editable harness (system prompt, guardrails, long-term memory,
+tool guidance, skills). It improves that mind in experiments: propose a change, grade it on
+fixed tasks with deterministic checks, keep it only if it helps without breaking safety, and
+record why. Above an operator **floor** it cannot edit, it decides for itself what to do next,
+and it asks for new capabilities rather than taking them.
+
+This is a fresh, small rebuild of the [PrivateMind](../README.md) concept, not a port of its code.
+
+| Read | For |
+|---|---|
+| [DESIGN.md](DESIGN.md) | How the needs, executive and floor map onto the code |
+| [SUBSTRATE.md](SUBSTRATE.md) | The offline loop, senses and safety layer, and the disconnected run |
+| [EXPERIMENTS.md](EXPERIMENTS.md) | The graded self-improvement gate and what real-model runs showed |
 
 ## Install
 
@@ -45,6 +61,22 @@ privatebrain capabilities                             # the deterministic capabi
 ```
 
 An interrupted `experiment run` resumes where it stopped: finished task runs are cached.
+
+The substrate loop keeps the brain working with no model reachable (see [SUBSTRATE.md](SUBSTRATE.md)):
+
+```bash
+privatebrain run                                  # persistent loop: senses, safety, known work, recovery
+privatebrain run --offline --until-idle           # as if the remote model were disconnected
+privatebrain task "" --capability money.sum_line_items --args '{"items": [...], "currency": "EUR"}'
+privatebrain task "What do you know about the boiler?"   # answered from local memory (BM25)
+privatebrain task "Weekly review" --every 604800 --deadline 2026-11-01T09:00:00+00:00
+privatebrain senses                               # one reading: clock, process, resources, connectivity, tasks
+privatebrain jobs                                 # each job's state and why it waits or is blocked
+privatebrain events --tail 20                     # the structured event journal
+privatebrain recall "boiler engineer"             # memory search, no model
+privatebrain approve <job>                        # the safety layer reads approvals; models cannot write them
+scripts/offline_demo.sh /tmp/pb-demo              # the real disconnected run (Linux, unshare -rn)
+```
 
 | Setting | Meaning |
 |---|---|

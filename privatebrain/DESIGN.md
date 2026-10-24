@@ -55,6 +55,14 @@ goes through `llm.call`, which appends its purpose, the alternative considered, 
 and the cost to `llm_calls.jsonl`. A change of executor is gated like a change of mind
 (`experiment.compare_setups`): no task may get worse, and calls or cost must fall.
 
+## The substrate (levels 1 and 2)
+
+`privatebrain run` is a persistent loop below every model: clock, task states, structured events,
+senses (time, process and resources, connectivity, tasks), rule-based routing to capabilities and
+local memory, independent safety checks, and crash recovery. Model work waits while the model
+is unreachable; everything else carries on. [SUBSTRATE.md](SUBSTRATE.md) has the design and the
+evidence from a run inside a network namespace with no interfaces.
+
 ## What the floor actually enforces
 
 - **For experiments: enforced in code.** Candidates and the optimizer run through `llm.call`:
