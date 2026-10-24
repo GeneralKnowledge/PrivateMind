@@ -16,6 +16,7 @@ from typing import Callable, Protocol
 
 from harness2.core import tree as harness_tree
 
+from . import llm
 from .mind import SURFACE
 
 
@@ -24,6 +25,8 @@ class ExecResult:
     ok: bool
     error: str = ""
     cost_usd: float = 0.0
+    llm_calls: int = 0
+    handled_by: str = "llm"
 
 
 class Executor(Protocol):
@@ -59,6 +62,47 @@ class FunctionExecutor:
                 f"[ACTION] answer the task\n[OBSERVATION]\n{out}\n", encoding="utf-8"
             )
         return ExecResult(ok=True)
+
+
+# A fact about this execution environment, not part of the mind: the mind may have been
+# written for an agent with tools, and without this note models narrate tool calls they
+# cannot make (observed on the first real baseline, 2026-10-24).
+NO_TOOLS_NOTE = (
+    "\n\n# This run\n\nYou have no tools, files or network access in this run. Your reply "
+    "itself is the deliverable: write it directly, with no tool calls.\n"
+)
+
+
+@dataclass
+class SandboxedTextExecutor:
+    """The experiment executor: one no-tools model call per task (see `llm.call`).
+
+    Candidate minds run here, so nothing a candidate says can reach files, the network, the
+    floor or credentials. Only the always-on part of the mind matters; skills and scripts
+    need tools and are out of scope until a real sandbox exists.
+    """
+
+    model: str = field(default_factory=lambda: llm.EVAL_MODEL)
+    ledger: Path | None = None
+    purpose: str = "do the task under the given mind"
+    alternative: str = "none: no deterministic capability matched this task"
+
+    def run(self, prompt, system, tree, workdir, timeout) -> ExecResult:
+        workdir.mkdir(parents=True, exist_ok=True)
+        res = llm.call(
+            prompt,
+            system=system + NO_TOOLS_NOTE,
+            purpose=self.purpose,
+            alternative=self.alternative,
+            model=self.model,
+            timeout=timeout,
+            ledger=self.ledger,
+        )
+        (workdir / "deliverable.md").write_text(res.text, encoding="utf-8")
+        (workdir / "trajectory.md").write_text(
+            f"[ACTION] answer the task ({res.model})\n[OBSERVATION]\n{res.text}\n", encoding="utf-8"
+        )
+        return ExecResult(ok=res.ok, error=res.error, cost_usd=res.cost_usd, llm_calls=1)
 
 
 DEFAULT_ALLOWED_TOOLS = (
