@@ -185,7 +185,7 @@ def test_interrupted_experiment_resumes_without_rerunning_finished_work(tmp_path
 
 def test_no_weakness_means_no_experiment(tmp_path):
     home = home_with_mind(tmp_path)
-    Mind(home).adopt({**Mind(home).tree(), "systemprompt.md": TLDR_RULE}, why="", evidence="", source="test")
+    Mind(home).store_version({**Mind(home).tree(), "systemprompt.md": TLDR_RULE}, why="", evidence="", source="test")
 
     def boom(**kw):
         raise AssertionError("the optimizer must not be called")

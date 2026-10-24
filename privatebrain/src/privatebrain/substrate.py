@@ -558,6 +558,58 @@ class Substrate:
         self._save()
 
 
+def health(home: Home, *, now: datetime | None = None) -> tuple[int, dict]:
+    """(exit code, report) for a supervisor. 0: running and its heartbeat is fresh, or it is
+    inside a model call that is still within its time limit. 1: the process holds the lock but
+    its heartbeat is stale: hung or stopped (SIGSTOP), so restart it. 2: not running.
+
+    Idle is not stale: an idle loop still beats every `interval_s`. A slow model call is not
+    stale either: before it starts, the loop records `busy` with the call's time limit."""
+    now = now or _now()
+    vitals = Substrate._read(home.root / "vitals.json", {})
+    pid = loop_running(home)
+    beat = _parse(vitals.get("heartbeat", ""))
+    age = round((now - beat).total_seconds(), 1) if beat else None
+    interval = float(vitals.get("interval_s") or 2.0)
+    stale_after = max(30.0, 3 * interval + 10)
+    busy = vitals.get("busy")
+    report = {"running": bool(pid), "pid": pid if pid and pid > 0 else None, "heartbeat": vitals.get("heartbeat"),
+              "heartbeat_age_s": age, "stale_after_s": stale_after, "busy": busy,
+              "halted": vitals.get("halted") or ""}
+    if not pid:
+        report["status"] = "stopped cleanly" if vitals.get("stopped") else "not running"
+        if not vitals.get("stopped") and _lock_pid(home.root / "substrate.lock"):
+            report["status"] = "not running (died without stopping; the next start recovers)"
+        return 2, report
+    if busy and (since := _parse(busy.get("since", ""))):
+        limit = float(busy.get("limit_s") or 300) + 30
+        took = (now - since).total_seconds()
+        report["status"] = f"busy on {busy.get('task')} for {took:.0f}s (limit {limit:.0f}s)"
+        return (0, report) if took <= limit else (1, {**report, "status": report["status"] + ": stalled"})
+    if age is None or age > stale_after:
+        report["status"] = f"stalled: heartbeat {age}s old (stale after {stale_after:.0f}s)"
+        return 1, report
+    report["status"] = "halted: the floor changed" if report["halted"] else "healthy"
+    return 0, report
+
+
+def loop_running(home: Home) -> int | None:
+    """The pid of the live substrate loop, or None. Asks the kernel (the flock), not the pid."""
+    path = home.root / "substrate.lock"
+    if not path.exists():
+        return None
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return _lock_pid(path) or -1
+    else:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        return None
+    finally:
+        os.close(fd)
+
+
 def _lock_pid(path: Path) -> int | None:
     try:
         return int(path.read_text().strip() or 0) or None

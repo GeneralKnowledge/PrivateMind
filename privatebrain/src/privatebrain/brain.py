@@ -10,9 +10,10 @@ from typing import Callable
 
 from harness2.core.proposer import Proposer
 
+from . import experiment as xp
 from .executor import Executor
 from .home import Home
-from .improve import BrainAdapter, default_channel, improve
+from .improve import BrainAdapter, default_channel
 from .journal import Episode, Journal
 from .mind import Mind
 from .needs import Needs, needs_from_deliverable
@@ -34,6 +35,7 @@ class Brain:
         executor: Executor,
         *,
         proposer_factory: Callable[[BrainAdapter], Proposer] | None = None,
+        gate_setup: xp.Setup | None = None,
         timeout: int = 1800,
         improve_k: int = 1,
     ):
@@ -42,7 +44,10 @@ class Brain:
         self.mind = Mind(home)
         self.journal = Journal(home)
         self.needs = Needs(home)
+        # Improving needs both a proposer and a gate to judge its proposal; without either,
+        # the brain does not improve itself at all.
         self.proposer_factory = proposer_factory
+        self.gate_setup = gate_setup
         self.timeout = timeout
         self.improve_k = improve_k
 
@@ -51,13 +56,17 @@ class Brain:
     def tick(self) -> TickResult:
         self.mind.floor_text()  # refuses to run on a tampered floor
         state = self.home.load_state()
-        if self.journal.queued():
+        from .substrate import loop_running
+
+        if self.journal.queued() and loop_running(self.home):
+            result = TickResult("work", "skipped: a `privatebrain run` loop owns the task queue")
+        elif self.journal.queued():
             result = self.work()
         elif self._should_ask(state):
             asked = self.needs.request_batch(state)
             self.home.save_state(state)
             result = TickResult("ask", f"requested {len(asked)} need(s) in {self.home.requests}")
-        elif (domain := self._domain_to_improve(state)) and self.proposer_factory:
+        elif self.proposer_factory and self.gate_setup and (domain := self._domain_to_improve(state)):
             result = self.improve(domain)
         else:
             result = self.reflect()
@@ -111,17 +120,17 @@ class Brain:
         return TickResult("work", detail)
 
     def improve(self, domain: str) -> TickResult:
+        """harness² proposes from this domain's episodes; the graded gate decides."""
         adapter = BrainAdapter(self.home, self.executor, default_channel(), timeout=self.timeout)
-        proposer = self.proposer_factory(adapter)
-        out = improve(adapter, proposer, domain, k=self.improve_k)
+        opt = xp.Harness2Optimizer(lambda: adapter, self.proposer_factory(adapter), domain, k=self.improve_k)
+        st = xp.run_experiment(self.home, self.gate_setup, opt, resume=False)
         state = self.home.load_state()
         state["improved_at"][domain] = len(self.journal.replayable(domain))
         self.home.save_state(state)
-        detail = f"{domain}: {out.status} on episode {out.episode_id}"
-        if out.adopted_version is not None:
-            detail += f" -> mind v{out.adopted_version}"
-        if out.errors:
-            detail += f" ({'; '.join(out.errors)[:300]})"
+        detail = f"{domain}: experiment {st['id']} {st['decision']}"
+        if st.get("adopted_version") is not None:
+            detail += f" -> mind v{st['adopted_version']}"
+        detail += f" ({'; '.join(st['reasons'])[:300]})"
         return TickResult("improve", detail)
 
     def reflect(self) -> TickResult:

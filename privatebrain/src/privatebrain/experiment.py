@@ -12,11 +12,17 @@ log, checks that can block a keep, a noise rule).
   one cannot touch the live mind. Every run is cached by (system prompt, executor, model,
   task, repeat), so an interrupted experiment resumes without paying for finished work.
 - `experiments.jsonl` is append-only. Nothing here deletes or rewrites a record.
+- This is the only gate for automatic mind changes. Every optimizer (GEPA, harness², a scripted
+  one in tests) is an `Optimizer` whose proposal goes through `run_experiment`, and the live
+  mind only changes in `adopt_candidate`, which re-checks the record before activating.
+- Lessons from earlier experiments (`lessons.py`) are passed to the optimizer as evidence it
+  may use; they never alter the decision.
 """
 
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import math
 import platform
@@ -32,9 +38,9 @@ from typing import Callable, Protocol
 
 from harness2.core import tree as harness_tree
 
-from . import llm, suite
+from . import lessons, llm, suite
 from .executor import Executor
-from .home import Home, append_jsonl, read_jsonl
+from .home import Home, append_jsonl, read_jsonl, safe_id
 from .improve import _FLOOR_OVERRIDE
 from .mind import SURFACE, Mind
 
@@ -192,7 +198,28 @@ def _scores(results, split):
     return [r.score for r in results if r.split == split]
 
 
-def decide(base: list[RunResult], cand: list[RunResult], rule: Rule, *, require_gain: bool = True) -> dict:
+# Checks about being right or honest, as opposed to the operator's style conventions. A change
+# to the execution layer must not lose any of these on any task it touches.
+CRITICAL_PREFIXES = ("correct:", "honest:", "needs:", "safety:")
+
+
+def _pass_rates(results: list[RunResult], task: str) -> dict[str, float]:
+    rates: dict[str, list[bool]] = {}
+    for r in results:
+        if r.task == task:
+            for c in r.checks:
+                rates.setdefault(c["name"], []).append(bool(c["passed"]))
+    return {k: sum(v) / len(v) for k, v in rates.items()}
+
+
+def decide(base: list[RunResult], cand: list[RunResult], rule: Rule, *, require_gain: bool = True,
+           changed_tasks: set[str] | None = None) -> dict:
+    """The keep-or-revert rule, shared by mind changes and execution-layer changes.
+
+    `changed_tasks` (execution-layer changes only) names the tasks the candidate handled by a
+    different route than the baseline. On those, no score may fall and no correctness, honesty
+    or safety check may pass less often, whatever the aggregates say. Tasks whose route did not
+    change ran the same way on both sides, so only the noise tolerance applies to them."""
     checks, reasons = {}, []
 
     cand_safety = [r for r in cand if r.split == "safety"]
@@ -206,10 +233,14 @@ def decide(base: list[RunResult], cand: list[RunResult], rule: Rule, *, require_
     gain = mean(ct) - mean(bt)
     se = math.sqrt(pvariance(bt) / len(bt) + pvariance(ct) / len(ct)) if len(bt) > 1 else 0.0
     gain_ok = gain >= rule.min_gain and gain > rule.noise_z * se
+    no_drop = gain >= -rule.heldout_tolerance
     checks["train"] = {"baseline": round(mean(bt), 4), "candidate": round(mean(ct), 4),
-                       "gain": round(gain, 4), "stderr": round(se, 4), "passed": gain_ok or not require_gain}
+                       "gain": round(gain, 4), "stderr": round(se, 4),
+                       "passed": gain_ok if require_gain else no_drop}
     if require_gain and not gain_ok:
         reasons.append(f"train gain {gain:+.3f} is below {rule.min_gain} or within noise ({rule.noise_z}x stderr {se:.3f})")
+    if not require_gain and not no_drop:
+        reasons.append(f"train fell by {-gain:.3f} (tolerance {rule.heldout_tolerance})")
 
     bh, ch = _scores(base, "heldout"), _scores(cand, "heldout")
     hd = mean(ch) - mean(bh) if bh and ch else 0.0
@@ -227,6 +258,23 @@ def decide(base: list[RunResult], cand: list[RunResult], rule: Rule, *, require_
     checks["regressions"] = {"passed": not regressions, "tasks": regressions}
     if regressions:
         reasons.append("regressed on " + ", ".join(r["task"] for r in regressions))
+
+    if changed_tasks is not None:
+        lost = []
+        for t in sorted(changed_tasks):
+            b = [r.score for r in base if r.task == t]
+            c = [r.score for r in cand if r.task == t]
+            if c and mean(c) < mean(b):
+                lost.append({"task": t, "check": "score", "baseline": round(mean(b), 3), "candidate": round(mean(c), 3)})
+            br, cr = _pass_rates(base, t), _pass_rates(cand, t)
+            for name, rate in br.items():
+                if name.startswith(CRITICAL_PREFIXES) and cr.get(name, 0.0) < rate:
+                    lost.append({"task": t, "check": name, "baseline": round(rate, 3),
+                                 "candidate": round(cr.get(name, 0.0), 3)})
+        checks["changed_routes"] = {"passed": not lost, "tasks": sorted(changed_tasks), "lost": lost}
+        if lost:
+            reasons.append("on a task whose route changed, " + ", ".join(
+                f"{x['task']} {x['check']} fell {x['baseline']} -> {x['candidate']}" for x in lost))
 
     bc = sum(r.cost_usd for r in base) / len(base)
     cc = sum(r.cost_usd for r in cand) / len(cand)
@@ -269,6 +317,7 @@ class Optimizer(Protocol):
     def propose(
         self, *, tree: harness_tree.Tree, weakness: dict, train: list[suite.Task],
         run: Callable[[harness_tree.Tree, suite.Task, int], RunResult], workdir: Path,
+        prior: list[dict] = (),
     ) -> Proposal: ...
 
 
@@ -276,11 +325,13 @@ class Optimizer(Protocol):
 class ScriptedOptimizer:
     """Returns a fixed edit. For testing the loop's orchestration only, never as evidence."""
 
-    edit: Callable[[harness_tree.Tree], harness_tree.Tree]
+    edit: Callable[..., harness_tree.Tree]
     rationale: str = "scripted edit"
     name: str = "scripted"
 
-    def propose(self, *, tree, weakness, train, run, workdir) -> Proposal:
+    def propose(self, *, tree, weakness, train, run, workdir, prior=()) -> Proposal:
+        if "prior" in inspect.signature(self.edit).parameters:
+            return Proposal(self.edit(dict(tree), prior=list(prior)), self.rationale, self.name)
         return Proposal(self.edit(dict(tree)), self.rationale, self.name)
 
 
@@ -301,7 +352,7 @@ class GepaOptimizer:
     ledger: Path | None = None
     name: str = "gepa"
 
-    def propose(self, *, tree, weakness, train, run, workdir) -> Proposal:
+    def propose(self, *, tree, weakness, train, run, workdir, prior=()) -> Proposal:
         import gepa
         from gepa.core.adapter import EvaluationBatch
 
@@ -332,10 +383,14 @@ class GepaOptimizer:
                         for tr in eval_batch.trajectories or []]
                 return {c: rows for c in components_to_update}
 
+        history = lessons.render_for_optimizer(list(prior))
+        system = ("You revise instructions for an AI assistant from graded examples. Follow the requested "
+                  "output format exactly." + (f"\n\n{history}" if history else ""))
+
         def reflect(prompt) -> str:
             res = llm.call(
                 prompt if isinstance(prompt, str) else json.dumps(prompt),
-                system="You revise instructions for an AI assistant from graded examples. Follow the requested output format exactly.",
+                system=system,
                 purpose="propose a revised mind component from graded failures (GEPA reflection)",
                 alternative="none: writing new instructions from feedback needs a model",
                 model=self.reflection_model, timeout=600, ledger=self.ledger,
@@ -366,6 +421,37 @@ class GepaOptimizer:
         )
 
 
+@dataclass
+class Harness2Optimizer:
+    """harness² as an optimizer under this gate. It improves from the brain's own replayable
+    episodes in one domain (its strength: no grader needed), and the mind it selects is then
+    evaluated here like any other candidate. Its own selection is never a reason to adopt.
+
+    Its proposer is not sandboxed (see improve.PROPOSER_WARNING), so the CLI builds one only
+    for an explicit `--allow-unconfined`; the probe runs use `executor`, which defaults to the
+    sandboxed no-tools executor."""
+
+    adapter_factory: Callable[[], object]  # -> improve.BrainAdapter
+    proposer: object  # harness2 Proposer
+    domain: str
+    k: int = 1
+    name: str = "harness2"
+    components: tuple[str, ...] = ("any file on the mind's surface",)
+
+    def propose(self, *, tree, weakness, train, run, workdir, prior=()) -> Proposal:
+        from .improve import improve
+
+        out = improve(self.adapter_factory(), self.proposer, self.domain, k=self.k)
+        calls = getattr(self.proposer, "_calls", [])
+        cost = sum(getattr(c, "cost_usd", 0.0) or 0.0 for c in calls)
+        if out.tree is None:
+            return Proposal(dict(tree), f"harness² kept the current mind ({out.status})", self.name,
+                            cost_usd=cost, llm_calls=len(calls), notes={"errors": out.errors})
+        return Proposal(dict(out.tree), f"harness² on episode {out.episode_id}: {out.why}".strip(), self.name,
+                        cost_usd=cost, llm_calls=len(calls),
+                        notes={"episode": out.episode_id, "harness2_lesson": out.lesson, "errors": out.errors})
+
+
 # --- the experiment --------------------------------------------------------------------------
 
 
@@ -393,15 +479,20 @@ def _environment(setup: Setup, optimizer: Optimizer) -> dict:
     }
 
 
-def _hypothesis(weakness: dict, rule: Rule, components) -> str:
+def _hypothesis(weakness: dict, rule: Rule, components, prior=()) -> str:
     top = weakness["failing_checks"][:3]
     what = "; ".join(f"{w['check']} fails in {w['fail_rate']:.0%} of train runs ({', '.join(w['tasks'])})" for w in top)
+    history = ""
+    if prior:
+        sm = lessons.summarize(list(prior))
+        history = (f" Prior evidence on these checks: {', '.join(sm['lessons'])} ({sm['positive']} positive, "
+                   f"{sm['negative']} negative; status {sm['status']}); it informs the proposal, not the decision.")
     return (
         f"Weakness: {what}. Hypothesis: revising the mind's {', '.join(components)} so the agent "
         f"meets these checks will raise the train mean from {weakness['train_mean']:.3f} by at least "
         f"{rule.min_gain} and beyond {rule.noise_z}x noise, without held-out falling more than "
         f"{rule.heldout_tolerance}, without any safety failure, and without any task regressing "
-        f"by more than {rule.task_regression}."
+        f"by more than {rule.task_regression}.{history}"
     )
 
 
@@ -419,6 +510,9 @@ def _diff(a: harness_tree.Tree, b: harness_tree.Tree) -> str:
 
 
 def validate_candidate(mind: Mind, tree: harness_tree.Tree) -> str:
+    off = sorted(rel for rel in tree if not harness_tree.is_allowed(SURFACE, rel))
+    if off:
+        return f"writes outside the mind's editable surface: {', '.join(map(repr, off))[:300]}"
     try:
         mind.validate(tree)
     except ValueError as exc:
@@ -448,6 +542,17 @@ class Experiment:
         tmp.replace(self.state_file)
 
 
+def _new_id(home: Home, suffix: str = "") -> str:
+    """A fresh experiment id. Two experiments started in the same second must not share a
+    directory: the second would load the first's finished state and silently redo nothing."""
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    n, exp_id = 1, stamp + suffix
+    while (home.root / "experiments" / exp_id).exists():
+        n += 1
+        exp_id = f"{stamp}-{n}{suffix}"
+    return exp_id
+
+
 def unfinished(home: Home) -> str | None:
     d = home.root / "experiments"
     for p in sorted(d.iterdir() if d.is_dir() else [], reverse=True):
@@ -463,7 +568,7 @@ def run_experiment(
     mind = Mind(home)
     floor_sha = home.load_state()["floor_sha"]
     mind.floor_text()  # refuses to start on a tampered floor
-    exp_id = (resume and unfinished(home)) or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    exp_id = (resume and unfinished(home)) or _new_id(home)
     exp = Experiment(home, exp_id)
     st = exp.load()
     if not st:
@@ -471,6 +576,7 @@ def run_experiment(
         st = {
             "id": exp_id, "started": _now(), "kind": "mind-change",
             "baseline": {"mind_version": mind.version, "mind_sha": tree_sha(tree)},
+            "floor_sha": floor_sha,
             "environment": _environment(setup, optimizer), "rule": asdict(rule),
             "tasks": {s: [f"{t.id}@{t.fingerprint}" for t in suite.tasks(s)] for s in suite.SPLITS},
         }
@@ -493,8 +599,14 @@ def run_experiment(
         return _finish(home, exp, st, base, None, "no-weakness",
                        ["every train check already passes; no experiment is worth running"], None)
 
+    # Recall what earlier experiments found about these checks: evidence for the optimizer and
+    # the hypothesis, never an input to the decision below.
+    prior = lessons.relevant(home, [w["check"] for w in weakness["failing_checks"]])
+    st.setdefault("prior_lessons", [r["id"] for r in prior])
+    st.setdefault("prior_summary", lessons.summarize(prior))
+
     # Hypothesize, before anything is proposed
-    st.setdefault("hypothesis", _hypothesis(weakness, rule, getattr(optimizer, "components", OPTIMIZABLE)))
+    st.setdefault("hypothesis", _hypothesis(weakness, rule, getattr(optimizer, "components", OPTIMIZABLE), prior))
     exp.save(st)
 
     # Propose
@@ -504,11 +616,12 @@ def run_experiment(
         prop = optimizer.propose(
             tree=base_tree, weakness=weakness, train=train,
             run=lambda t, task, repeat=0: run_one(home, setup, system_of(t), t, task, repeat),
-            workdir=exp.dir,
+            workdir=exp.dir, prior=prior,
         )
         harness_tree.write_tree(SURFACE, prop.tree, cand_dir, stubs=False)
         st["candidate"] = {
             "mind_sha": tree_sha(prop.tree), "optimizer": prop.optimizer, "rationale": prop.rationale,
+            "components": sorted(r for r in set(base_tree) | set(prop.tree) if base_tree.get(r) != prop.tree.get(r)),
             "optimizer_cost_usd": round(prop.cost_usd, 6), "optimizer_llm_calls": prop.llm_calls,
             "notes": prop.notes, "diff": _diff(base_tree, prop.tree),
         }
@@ -531,10 +644,13 @@ def run_experiment(
                    "checks": verdict["checks"]}
     if not verdict["keep"]:
         return _finish(home, exp, st, base, cand, "rejected", verdict["reasons"], verdict)
+    st["gate_passed"], st["checks"] = True, verdict["checks"]
+    exp.save(st)
     if home.load_state().get("auto_adopt", True):
-        v = mind.adopt(cand_tree, why=st["hypothesis"], evidence=json.dumps(verdict["checks"], indent=2),
-                       source=f"experiment {exp_id} ({st['candidate']['optimizer']})")
-        st["adopted_version"] = v
+        try:
+            st["adopted_version"] = adopt_candidate(home, exp_id, approved_by="auto_adopt", record=False)
+        except AdoptionRefused as exc:
+            return _finish(home, exp, st, base, cand, "rejected", [f"adoption refused: {exc}"], verdict)
         return _finish(home, exp, st, base, cand, "adopted", verdict["reasons"], verdict)
     return _finish(home, exp, st, base, cand, "pending-approval", verdict["reasons"], verdict)
 
@@ -547,38 +663,79 @@ def _finish(home, exp, st, base, cand, decision, reasons, verdict) -> dict:
     st["total_cost_usd"] = round(
         sum(r.cost_usd for r in base) + sum(r.cost_usd for r in cand or [])
         + (st.get("candidate") or {}).get("optimizer_cost_usd", 0.0), 6)
-    st["lesson"] = _lesson(st) if decision == "adopted" else None
-    if st["lesson"]:
-        append_jsonl(home.root / "lessons.jsonl", st["lesson"])
+    # Every evaluated candidate leaves a lesson, adopted or not: negative evidence is kept.
+    st["lesson"] = lessons.record(home, st)
     exp.save(st)
     (exp.dir / "RECORD.md").write_text(render_record(st), encoding="utf-8")
     append_jsonl(home.root / "experiments.jsonl", {
         k: st.get(k) for k in ("id", "kind", "started", "finished", "hypothesis", "decision", "reasons",
-                               "total_cost_usd", "adopted_version")
+                               "total_cost_usd")
     } | {"baseline_mind": st["baseline"]["mind_sha"], "candidate_mind": (st.get("candidate") or {}).get("mind_sha")})
     return st
 
 
-def _lesson(st: dict) -> dict:
-    """A claim with a scope and the evidence behind it, not a universal rule. Its status is
-    whatever later evidence says; later experiments append evidence, never overwrite."""
-    c = st["checks"]
-    return {
-        "id": f"lesson-{st['id']}",
-        "claim": st["candidate"]["rationale"],
-        "addresses": [w["check"] for w in st["problem"]["failing_checks"]],
-        "scope": {"supported_on": [t.split("@")[0] for t in st["tasks"]["train"] + st["tasks"]["heldout"]],
-                  "untested": "anything outside this suite; tool-using tasks"},
-        "evidence": [{"experiment": st["id"], "train_gain": c["train"]["gain"],
-                      "heldout_delta": c["heldout"]["delta"], "safety": c["safety"]["passed"]}],
-        "mind_version": st.get("adopted_version"),
-    }
+class AdoptionRefused(RuntimeError):
+    pass
+
+
+def adopt_candidate(home: Home, exp_id: str, *, approved_by: str, record: bool = True) -> int:
+    """The one place the live mind changes (besides the operator's rollback). Re-checks the
+    record instead of trusting the caller: the candidate passed the gate, it is byte-for-byte
+    what was evaluated, it was evaluated against the mind that is live now, and the floor has
+    not changed since. Returns the new version."""
+    exp = Experiment(home, safe_id(exp_id))
+    st = exp.load()
+    if not st:
+        raise AdoptionRefused(f"no experiment {exp_id}")
+    if st.get("kind") != "mind-change" or not st.get("gate_passed"):
+        raise AdoptionRefused(f"experiment {exp_id} did not pass the gate (decision: {st.get('decision')})")
+    if st.get("adopted_version") is not None:
+        raise AdoptionRefused(f"experiment {exp_id} was already adopted as v{st['adopted_version']}")
+    mind = Mind(home)
+    tree = harness_tree.read_tree(SURFACE, exp.dir / "candidate")
+    if tree_sha(tree) != st["candidate"]["mind_sha"]:
+        raise AdoptionRefused("the candidate on disk is not the one that was evaluated")
+    if tree_sha(mind.tree()) != st["baseline"]["mind_sha"]:
+        raise AdoptionRefused("the live mind changed since this candidate was evaluated against it; "
+                              "run a new experiment")
+    if st.get("floor_sha") and home.load_state()["floor_sha"] != st["floor_sha"]:
+        raise AdoptionRefused("the floor changed since this candidate was evaluated")
+    mind.floor_text()
+    invalid = validate_candidate(mind, tree)
+    if invalid:
+        raise AdoptionRefused(f"invalid candidate: {invalid}")
+    v = mind.store_version(tree, why=st["hypothesis"], evidence=json.dumps(st["checks"], indent=2),
+                           source=f"experiment {exp_id} ({st['candidate']['optimizer']}), approved by {approved_by}")
+    st["adopted_version"], st["approved_by"] = v, approved_by
+    exp.save(st)
+    if not record:  # run_experiment writes the record itself
+        return v
+    st["decision"] = "adopted"
+    exp.save(st)
+    (exp.dir / "RECORD.md").write_text(render_record(st), encoding="utf-8")
+    append_jsonl(home.root / "experiments.jsonl", {"id": exp_id, "kind": "adoption", "decision": "adopted",
+                                                   "adopted_version": v, "approved_by": approved_by,
+                                                   "finished": _now(), "reasons": [], "total_cost_usd": 0})
+    return v
+
+
+def pending(home: Home) -> list[str]:
+    """Experiments whose candidate passed the gate and waits for `privatebrain mind approve`."""
+    d = home.root / "experiments"
+    out = []
+    for p in sorted(d.iterdir() if d.is_dir() else []):
+        st = Experiment(home, p.name).load()
+        if st.get("decision") == "pending-approval" and st.get("adopted_version") is None:
+            out.append(p.name)
+    return out
 
 
 def render_record(st: dict) -> str:
     c = st.get("checks") or {}
     lines = [f"# Experiment {st['id']}", "", f"- decision: **{st['decision']}**",
              f"- reasons: {'; '.join(st['reasons'])}",
+             *([f"- adopted as mind v{st['adopted_version']} (approved by {st.get('approved_by')})"]
+               if st.get("adopted_version") is not None else []),
              f"- baseline mind: v{st['baseline']['mind_version']} ({st['baseline']['mind_sha']})",
              f"- environment: {json.dumps(st['environment'])}", f"- total cost: ${st['total_cost_usd']}", ""]
     if st.get("hypothesis"):
@@ -590,7 +747,21 @@ def render_record(st: dict) -> str:
             lines += [f"| {k} | {v['mean']} | {v['all_pass_rate']} | {v['runs']} |" for k, v in res["splits"].items()]
             lines += ["", f"cost ${res['cost_usd']}, {res['llm_calls']} model calls, {res['seconds']}s", ""]
     if c:
-        lines += ["## Checks", "", "```json", json.dumps(c, indent=2), "```", ""]
+        lines += ["## What this shows, and what it does not", ""]
+        if "train" in c:
+            lines.append(f"- Recorded observation: train {c['train']['baseline']} -> {c['train']['candidate']} "
+                         f"(gain {c['train']['gain']:+}, stderr {c['train']['stderr']}) on the optimizer's own tasks.")
+        if (c.get("heldout") or {}).get("baseline") is not None:
+            n = len(st["tasks"].get("heldout", []))
+            lines.append(f"- In-suite transfer: held-out {c['heldout']['baseline']} -> {c['heldout']['candidate']} "
+                         f"on {n} task(s) the optimizer never saw. Same suite and style, so this is not evidence "
+                         "of general improvement.")
+        lines.append(f"- Safety: {'every safety run passed' if (c.get('safety') or {}).get('passed') else 'FAILED'}.")
+        lines.append("- Not shown: anything about tasks outside this suite, tool use, or multi-turn work.")
+        if st.get("prior_lessons"):
+            lines.append(f"- Informed by earlier lessons {', '.join(st['prior_lessons'])}; the decision used only "
+                         "this experiment's scores.")
+        lines += ["", "## Checks", "", "```json", json.dumps(c, indent=2), "```", ""]
     if (st.get("candidate") or {}).get("diff"):
         lines += ["## Candidate change", "", st["candidate"]["rationale"], "", "```diff", st["candidate"]["diff"], "```", ""]
     return "\n".join(lines)
@@ -602,13 +773,14 @@ def log(home: Home) -> list[dict]:
 
 def compare_setups(home: Home, base: Setup, cand: Setup, *, rule: Rule = Rule(), note: str = "") -> dict:
     """The same gate for a change to the execution layer (e.g. compute-first routing): the mind
-    is fixed and the executor differs. No score gain is required, but nothing may get worse,
-    and the change must cut model calls or cost to be worth keeping."""
+    is fixed and the executor differs. No score gain is required. Correctness and safety must be
+    preserved on every task (per task and per check where the route changed, not on average,
+    and every safety run must pass), and the change must cut model calls or cost to be kept."""
     mind = Mind(home)
     mind.floor_text()
     tree = mind.tree()
     system = mind.system_prompt(tree)
-    exp_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-exec"
+    exp_id = _new_id(home, "-exec")
     exp = Experiment(home, exp_id)
     tasks = suite.tasks()
     st = {
@@ -623,7 +795,10 @@ def compare_setups(home: Home, base: Setup, cand: Setup, *, rule: Rule = Rule(),
     b = evaluate(home, base, system, tree, tasks)
     c = evaluate(home, cand, system, tree, tasks)
     st["baseline"]["results"], st["candidate"] = summarize(b), {"results": summarize(c), "mind_sha": st["baseline"]["mind_sha"]}
-    verdict = decide(b, c, rule, require_gain=False)
+    # The tasks the candidate handled differently: there, nothing may get worse at all.
+    changed = {t.id for t in tasks
+               if {r.handled_by for r in c if r.task == t.id} != {r.handled_by for r in b if r.task == t.id}}
+    verdict = decide(b, c, rule, require_gain=False, changed_tasks=changed)
     cheaper = (sum(r.llm_calls for r in c) < sum(r.llm_calls for r in b)
                or sum(r.cost_usd for r in c) < sum(r.cost_usd for r in b))
     verdict["checks"]["savings"] = {"passed": cheaper}
