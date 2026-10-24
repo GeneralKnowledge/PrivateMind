@@ -374,7 +374,8 @@ class Substrate:
         parked, resumed = [], []
         for job in self.jobs:
             if job.state == "queued" and "remote_model" in job.needs and not online:
-                job.state, job.waiting_for, job.reason = "waiting", ["remote_model"], "remote model unavailable"
+                why = ", ".join(self.vitals.get("connectivity", {}).get("reasons", [])) or "not probed yet"
+                job.state, job.waiting_for, job.reason = "waiting", ["remote_model"], f"remote model unavailable: {why}"
                 parked.append(job.id)
             elif job.state in ("waiting", "blocked") and all(self._available(r, job) for r in job.waiting_for):
                 job.state, job.waiting_for, job.reason = "queued", [], ""

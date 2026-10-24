@@ -26,8 +26,9 @@ This is a fresh, small rebuild of the [PrivateMind](../README.md) concept, not a
 
 ## Install
 
-Python 3.12 or 3.13, plus the [Claude Code CLI](https://docs.claude.com/en/docs/claude-code)
-for the default executor and improver.
+Python 3.12 or 3.13, plus the [Claude Code CLI](https://docs.claude.com/en/docs/claude-code),
+which every model call goes through (with no tools unless you say otherwise; see
+[DESIGN.md](DESIGN.md#execution-routes-what-can-run-model-output-and-how-it-is-confined)).
 
 ```bash
 cd privatebrain
@@ -44,16 +45,20 @@ $EDITOR ~/.privatebrain/FLOOR.md && privatebrain floor accept
 
 privatebrain task "Summarise this week's arXiv papers on agent memory" --domain research
 privatebrain task "Email the landlord about the boiler" --domain admin --side-effects
-privatebrain tick --steps 5               # work -> ask -> improve -> reflect
-privatebrain status
+privatebrain tick --steps 5               # work -> ask -> reflect, with no tools
+privatebrain tick --allow-unconfined      # attended only: tool-using executor and harness² improver, NOT sandboxed
+privatebrain status                       # running? heartbeat? online? budget? jobs, approvals, mind
 privatebrain mind log                     # every adopted mind, with its evidence
-privatebrain mind rollback 0
+privatebrain mind rollback                # back to the version that was live before (or: rollback <n>)
 ```
 
 Graded experiments and compute-first routing (see [DESIGN.md](DESIGN.md) and [EXPERIMENTS.md](EXPERIMENTS.md)):
 
 ```bash
 privatebrain experiment run --budget 60 --repeats 3   # baseline, GEPA candidate, keep or reject
+privatebrain experiment run --optimizer harness2 --domain writing --allow-unconfined  # harness² proposes, same gate
+privatebrain experiment lessons                       # what earlier experiments found, with evidence and limits
+privatebrain mind approve <experiment-id>             # with auto-adopt off: adopt a candidate that passed the gate
 privatebrain experiment compare-executors             # model-only vs compute-first, same gate
 privatebrain experiment log                           # every experiment, append-only
 privatebrain experiment show <id>                     # one record: hypothesis, scores, diff, decision
@@ -74,8 +79,11 @@ privatebrain senses                               # one reading: clock, process,
 privatebrain jobs                                 # each job's state and why it waits or is blocked
 privatebrain events --tail 20                     # the structured event journal
 privatebrain recall "boiler engineer"             # memory search, no model
-privatebrain approve <job>                        # the safety layer reads approvals; models cannot write them
+privatebrain approve <job>                        # approves what the job is blocked on now, once
+privatebrain health                               # for a supervisor: exit 0 healthy, 1 stalled, 2 not running
+scripts/supervise.sh ~/.privatebrain              # a minimal supervisor: restarts a dead or stalled loop
 scripts/offline_demo.sh /tmp/pb-demo              # the real disconnected run (Linux, unshare -rn)
+scripts/recovery_demo.sh /tmp/pb-recovery         # SIGKILL and SIGSTOP under the supervisor
 ```
 
 | Setting | Meaning |
@@ -84,7 +92,9 @@ scripts/offline_demo.sh /tmp/pb-demo              # the real disconnected run (L
 | `PRIVATEBRAIN_MODEL` | Model for doing tasks (CLI default if unset) |
 | `PRIVATEBRAIN_IMPROVER_MODEL` | Model for harness² editing and selection, and GEPA reflection (default `claude-opus-5-5`) |
 | `PRIVATEBRAIN_EVAL_MODEL` | Model the mind runs on in experiments (default `claude-haiku-5-5`) |
-| `privatebrain mind auto-adopt off` | Queue improvements for `mind approve <episode>` instead of adopting them |
+| `PRIVATEBRAIN_DAILY_BUDGET_USD` | Model spend per day before model work waits (default 1.0) |
+| `PRIVATEBRAIN_CALL_CAP_USD` | Spend cap per substrate model call; a call killed mid-flight is charged at it (default 0.10) |
+| `privatebrain mind auto-adopt off` | Hold candidates that pass the gate for `mind approve <experiment>`; also stops `compare-executors` switching the executor |
 
 Tasks marked `--side-effects` are journaled but never replayed, because harness²
 improves a mind by re-running the same task several times.
@@ -95,5 +105,6 @@ The graded experiment loop and compute-first routing have run against a real mod
 (Haiku 5.5 doing the tasks, Opus 5.5 reflecting for GEPA). In total: 219 model calls,
 $0.41, and one mind change adopted, with held-out going from 0.43 to 1.00. One change was
 rejected as within noise. [EXPERIMENTS.md](EXPERIMENTS.md) has the numbers and what they do
-and do not show. The v0 tick (`privatebrain tick`, with the agentic executor and harness²
-improve) has still not run against a real model.
+and do not show. The substrate's offline and recovery behaviour has been run for real: see
+[SUBSTRATE.md](SUBSTRATE.md). harness² now proposes under the same gate as GEPA, but that path
+(which needs `--allow-unconfined`) has only been tested offline with a scripted editor.

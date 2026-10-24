@@ -633,9 +633,9 @@ def _render_budget(r: dict, ref: date | None) -> str:
     if "fits" in r:
         verdict = (f"fits within your {r['budget']} {cur} budget, leaving {r['remaining']} {cur}"
                    if r["fits"] else f"is over your {r['budget']} {cur} budget by {r['remaining'].lstrip('-')} {cur}")
-        head = f"TL;DR: The trip costs {total} {cur}, which {verdict}."
+        head = f"TL;DR: The total is {total} {cur}, which {verdict}."
     else:
-        head = f"TL;DR: The trip costs {total} {cur}."
+        head = f"TL;DR: The total is {total} {cur}."
     rows = [f"- {normalize_dates(ln['label'], ref)}: {ln['quantity']} x {ln['unit_price']} = {ln['subtotal']} {cur}"
             for ln in r["lines"]]
     return "\n".join([head, "", *rows, "", f"Total: {total} {cur}", ""])
