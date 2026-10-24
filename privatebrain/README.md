@@ -59,5 +59,9 @@ improves a mind by re-running the same task several times.
 
 ## Status
 
-v0. The offline loop is tested end to end. Runs against real models have not been
-exercised yet; expect to tune the executor's allowed tools and timeouts.
+The graded experiment loop and compute-first routing have run against a real model
+(Haiku 5.5 doing the tasks, Opus 5.5 reflecting for GEPA). In total: 219 model calls,
+$0.41, and one mind change adopted, with held-out going from 0.43 to 1.00. One change was
+rejected as within noise. [EXPERIMENTS.md](EXPERIMENTS.md) has the numbers and what they do
+and do not show. The v0 tick (`privatebrain tick`, with the agentic executor and harness²
+improve) has still not run against a real model.
