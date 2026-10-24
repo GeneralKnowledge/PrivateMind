@@ -111,18 +111,29 @@ class Mind:
     def validate(self, tree: harness_tree.Tree) -> None:
         harness_tree.validate(SURFACE, tree, allow_subagents=False)
 
-    def adopt(self, tree: harness_tree.Tree, *, why: str, evidence: str, source: str) -> int:
-        """Validate, store as the next version, and make it live. Returns the version."""
+    def store_version(self, tree: harness_tree.Tree, *, why: str, evidence: str, source: str) -> int:
+        """Validate, store as the next version, and make it live. Returns the version.
+
+        Only `experiment.adopt_candidate` calls this: every automatic mind change goes through
+        the graded gate first. (Tests call it to set up a starting mind.)"""
         self.validate(tree)
         n = max(self.versions(), default=0) + 1
         self._write_version(n, tree, why=why, evidence=evidence, source=source)
         self._activate(n)
         return n
 
-    def rollback(self, version: int) -> None:
+    def rollback(self, version: int | None = None) -> int:
+        """Make an earlier stored version live (the operator's undo). With no version, the one
+        that was live before the current one. Returns the version now live."""
+        if version is None:
+            history = self.home.load_state().get("mind_history", [])
+            if len(history) < 2:
+                raise ValueError("no earlier version to roll back to")
+            version = history[-2]
         if version not in self.versions():
             raise ValueError(f"no mind version {version}; have {self.versions()}")
         self._activate(version)
+        return version
 
     def versions(self) -> list[int]:
         d = self.home.mind_versions
@@ -145,4 +156,5 @@ class Mind:
         shutil.copytree(src, self.home.mind_current)
         state = self.home.load_state()
         state["mind_version"] = n
+        state["mind_history"] = (state.get("mind_history", []) + [n])[-50:]
         self.home.save_state(state)

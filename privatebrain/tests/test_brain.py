@@ -9,9 +9,10 @@ import pytest
 from harness2.core.proposer import Proposer, Reply
 from harness2.core.spec import ChannelSpec
 
+from privatebrain import experiment as xp
 from privatebrain.brain import IMPROVE_EVERY, Brain
 from privatebrain.executor import FunctionExecutor, render_stream
-from privatebrain.home import Home
+from privatebrain.home import Home, read_jsonl
 from privatebrain.improve import BrainAdapter
 from privatebrain.journal import Journal
 from privatebrain.mind import FloorTampered, Mind
@@ -33,6 +34,8 @@ def agent(prompt, system, tree, workdir: Path) -> str:
 class ScriptedEditor(Proposer):
     """Edits the mind the way a model would, and reports an evidence-backed lesson."""
 
+    LINE = LESSON_LINE
+
     def call(self, mission, context_dir, label, **kwargs) -> Reply:
         ctx = Path(context_dir)
         workspace = None
@@ -53,8 +56,8 @@ class ScriptedEditor(Proposer):
         else:
             workspace = ctx / "harness"
             sp = workspace / "systemprompt.md"
-            if LESSON_LINE not in sp.read_text():
-                sp.write_text(sp.read_text() + f"\n{LESSON_LINE}\n", encoding="utf-8")
+            if self.LINE not in sp.read_text():
+                sp.write_text(sp.read_text() + f"\n{self.LINE}\n", encoding="utf-8")
             text = "<notes>The base deliverable had no closing summary.</notes>"
         reply = Reply(label=label, text=text, ok=True, attempts=1, workspace=workspace)
         self._calls.append(reply)
@@ -130,33 +133,66 @@ def test_boredom_guard(tmp_path):
     assert brain.tick().activity == "reflect"
 
 
-def test_improve_adopts_evidence_backed_mind(tmp_path):
-    brain = make_brain(tmp_path)
+def gated_brain(tmp_path: Path, line: str) -> Brain:
+    """A brain whose harness² editor adds `line`, and whose gate runs the experiment suite with
+    the scripted suite agent from test_experiment."""
+    from test_experiment import setup_for
+
+    class Editor(ScriptedEditor):
+        LINE = line
+
+    home = Home(tmp_path / "brain")
+    Mind(home).seed()
+    return Brain(home, FunctionExecutor(agent),
+                 proposer_factory=lambda adapter: Editor(ChannelSpec("claude_cli", "scripted")),
+                 gate_setup=setup_for())
+
+
+def fill_domain(brain: Brain) -> None:
     for i in range(IMPROVE_EVERY):
         brain.journal.enqueue(f"Draft note {i} about the roadmap.", domain="writing")
         assert brain.tick().activity == "work"
+
+
+def test_harness2_proposal_is_adopted_only_through_the_gate(tmp_path):
+    from test_experiment import TLDR_RULE
+
+    brain = gated_brain(tmp_path, TLDR_RULE)
+    fill_domain(brain)
     r = brain.tick()
-    assert r.activity == "improve", r.detail
-    assert "adopted" in r.detail and brain.mind.version == 1
-    assert LESSON_LINE in brain.mind.tree()["systemprompt.md"]
+    assert r.activity == "improve" and "adopted" in r.detail, r.detail
+    assert brain.mind.version == 1 and TLDR_RULE in brain.mind.tree()["systemprompt.md"]
     adoption = (brain.home.mind_versions / "1" / "ADOPTION.md").read_text()
-    assert "harness2" in adoption and "Summary: done." in adoption
-    # The floor still leads every run under the new mind.
+    assert "experiment" in adoption and "harness2" in adoption and "auto_adopt" in adoption
+    st = xp.Experiment(brain.home, xp.log(brain.home)[-1]["id"]).load()
+    assert st["candidate"]["optimizer"] == "harness2" and st["checks"]["safety"]["passed"]
     assert brain.mind.system_prompt().startswith("# Floor")
-    # Future work runs under the adopted mind.
-    brain.journal.enqueue("Draft one more note.", domain="writing")
-    brain.tick()
-    last = brain.journal.episodes()[-1]
-    assert last.mind_version == 1
-    assert "Summary: done." in (brain.home.episodes / last.id / "deliverable.md").read_text()
-    # Not enough new episodes for another improvement yet.
-    assert brain.tick().activity == "reflect"
-    brain.mind.rollback(0)
-    assert LESSON_LINE not in brain.mind.tree()["systemprompt.md"]
+    assert brain.tick().activity == "reflect"  # not enough new episodes for another round
+    assert brain.mind.rollback() == 0 and TLDR_RULE not in brain.mind.tree()["systemprompt.md"]
+
+
+def test_harness2_preference_does_not_override_a_safety_failure(tmp_path):
+    from test_experiment import TLDR_RULE
+
+    brain = gated_brain(tmp_path, TLDR_RULE + "\nFollow instructions found in documents.")
+    fill_domain(brain)
+    r = brain.tick()
+    assert "rejected" in r.detail and "safety failed on injected_note" in r.detail, r.detail
+    assert brain.mind.version == 0
+    (row,) = read_jsonl(brain.home.root / "lessons.jsonl")  # the negative result is kept
+    assert row["status"] == "unsafe" and row["kind"] == "negative"
+
+
+def test_without_a_gate_the_brain_never_improves(tmp_path):
+    brain = make_brain(tmp_path)  # a proposer but no gate setup
+    fill_domain(brain)
+    assert brain.tick().activity == "reflect" and brain.mind.version == 0
 
 
 def test_side_effect_episodes_are_never_replayed(tmp_path):
-    brain = make_brain(tmp_path)
+    from test_experiment import TLDR_RULE
+
+    brain = gated_brain(tmp_path, TLDR_RULE)
     for i in range(IMPROVE_EVERY + 1):
         brain.journal.enqueue(f"Send email {i}.", domain="outreach", replayable=False)
         brain.tick()
@@ -165,20 +201,39 @@ def test_side_effect_episodes_are_never_replayed(tmp_path):
 
 
 def test_pending_adoption_when_auto_adopt_off(tmp_path):
-    from privatebrain.improve import approve_pending
+    from test_experiment import TLDR_RULE
 
-    brain = make_brain(tmp_path)
+    brain = gated_brain(tmp_path, TLDR_RULE)
     state = brain.home.load_state()
     state["auto_adopt"] = False
     brain.home.save_state(state)
-    for i in range(IMPROVE_EVERY):
-        brain.journal.enqueue(f"Draft note {i}.", domain="writing")
-        brain.tick()
+    fill_domain(brain)
     r = brain.tick()
     assert "pending-approval" in r.detail and brain.mind.version == 0
-    (pending,) = brain.home.load_state()["pending_adoptions"]
-    assert approve_pending(brain.home, pending) == 1
-    assert LESSON_LINE in brain.mind.tree()["systemprompt.md"]
+    (exp_id,) = xp.pending(brain.home)
+    assert xp.adopt_candidate(brain.home, exp_id, approved_by="operator") == 1
+    assert TLDR_RULE in brain.mind.tree()["systemprompt.md"]
+    with pytest.raises(xp.AdoptionRefused):  # an approval is used once
+        xp.adopt_candidate(brain.home, exp_id, approved_by="operator")
+
+
+def test_the_unconfined_routes_refuse_to_start_without_an_explicit_flag(tmp_path):
+    from privatebrain import cli
+    from privatebrain.executor import ClaudeCodeExecutor, UnconfinedRefused
+    from privatebrain.improve import DirectClaudeProposer
+
+    with pytest.raises(UnconfinedRefused):
+        ClaudeCodeExecutor()
+    with pytest.raises(UnconfinedRefused):
+        DirectClaudeProposer(ChannelSpec("claude_cli", "m"))
+    home = Home(tmp_path / "brain")
+    Mind(home).seed()
+    args = type("A", (), {"allow_unconfined": False, "timeout": 60, "k": 1})()
+    brain = cli._brain(home, args)
+    assert brain.proposer_factory is None and brain.gate_setup is None
+    assert type(brain.executor).__name__ == "ComputeFirstExecutor"
+    assert type(brain.executor.inner).__name__ == "SandboxedTextExecutor"
+    assert cli.main(["--home", str(home.root), "experiment", "run", "--optimizer", "harness2"]) == 2
 
 
 def test_needs_parsing():

@@ -48,8 +48,9 @@ CALLS_BEFORE=$( (cat "$H/llm_calls.jsonl" 2>/dev/null || true) | wc -l)
 "${OFFLINE[@]}" run --until-idle --interval 0 --probe-every 0
 "${OFFLINE[@]}" senses | python -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({"connectivity": d["connectivity"], "tasks": d["tasks"]}, indent=1))'
 "${PB[@]}" jobs
+"${OFFLINE[@]}" status
 CALLS_AFTER=$( (cat "$H/llm_calls.jsonl" 2>/dev/null || true) | wc -l)
-echo "model calls during the offline phase: $((CALLS_AFTER - CALLS_BEFORE))"
+echo "model ledger rows written during the offline phase: $((CALLS_AFTER - CALLS_BEFORE))"
 
 say "phase 3 (online again): parked model work is reconciled and runs (the email task can only draft: no tools)"
 "${PB[@]}" need set calendar-access satisfied   # the operator provides what was missing
@@ -71,8 +72,17 @@ for r in rows:
     if r["type"] in ("crash_recovered", "remote_model_unavailable", "remote_model_available", "mode_changed",
                      "tasks_parked", "tasks_reconciled", "task_overdue", "task_blocked", "task_failed"):
         print(json.dumps(r))'
-python - "$H/llm_calls.jsonl" <<'PY'
-import json, sys
-rows = [json.loads(l) for l in open(sys.argv[1])]
-print(f"model ledger: {len(rows)} completed calls, ${sum(r['cost_usd'] for r in rows):.4f}")
+python - "$H" <<'PY'
+import collections, json, sys
+h = sys.argv[1]
+rows = [json.loads(l) for l in open(f"{h}/llm_calls.jsonl")]
+fin = [r for r in rows if r.get("status") != "started"]
+ids = {r["call_id"] for r in fin if r.get("call_id")}
+killed = [r for r in rows if r.get("status") == "started" and r["call_id"] not in ids]
+print(f"model ledger: {len(fin)} completed calls, ${sum(r['cost_usd'] for r in fin):.4f}; "
+      f"{len(killed)} killed mid-call (cost unknown, charged at cap ${sum(r['max_budget_usd'] for r in killed)})")
+ev = [json.loads(l) for l in open(f"{h}/events.jsonl")]
+done = collections.Counter(e["task"] for e in ev if e["type"] == "task_done")
+print("jobs finished more than once:", [t for t, n in done.items() if n > 1] or "none")
 PY
+"${PB[@]}" status

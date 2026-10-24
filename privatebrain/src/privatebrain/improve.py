@@ -1,4 +1,7 @@
-"""Improve mode: harness² Propose–Probe–Compose over the brain's own past episodes.
+"""harness² as an optimizer: Propose–Probe–Compose over the brain's own past episodes.
+
+It proposes a mind; it never adopts one. Its output goes through the same graded gate as GEPA's
+(`experiment.Harness2Optimizer` -> `experiment.run_experiment`).
 
 `BrainAdapter` is a harness² `BenchmarkAdapter` whose "benchmark" is the journal: each
 replayable episode is a task, a domain is an area of the operator's work, and a rollout is
@@ -8,7 +11,6 @@ against each other, which is exactly the situation a personal agent is in.
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import shutil
@@ -140,9 +142,28 @@ class BrainAdapter:
         return None
 
 
+PROPOSER_WARNING = (
+    "harness²'s proposer runs `claude --dangerously-skip-permissions`: the editing model gets an "
+    "unrestricted shell as the operator's user. It works in a temporary copy of the mind, but "
+    "nothing stops it reaching the brain home (FLOOR.md, state.json, approvals.jsonl) or anything "
+    "else on the host. It is NOT sandboxed. Use it only attended, with --allow-unconfined."
+)
+
+
+@dataclass
 class DirectClaudeProposer(Proposer):
     """harness²'s Proposer on the claude_cli channel, without forcing Vertex AI: it keeps the
-    caller's own Anthropic credentials (API key or logged-in CLI)."""
+    caller's own Anthropic credentials (API key or logged-in CLI). Refuses to exist unless the
+    caller passes `unconfined_ok=True` (see PROPOSER_WARNING)."""
+
+    unconfined_ok: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.unconfined_ok:
+            from .executor import UnconfinedRefused
+
+            raise UnconfinedRefused(PROPOSER_WARNING)
+        super().__post_init__()
 
     def env(self) -> dict[str, str]:
         e = dict(os.environ)
@@ -154,8 +175,7 @@ class DirectClaudeProposer(Proposer):
 class ImproveResult:
     episode_id: str
     status: str
-    adopted_version: int | None = None
-    pending: str = ""
+    tree: dict | None = None  # the mind harness² chose, when it differs from the live one
     why: str = ""
     lesson: dict = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
@@ -170,9 +190,11 @@ def improve(
     mode: str = "parallel",
     selector: Proposer | None = None,
 ) -> ImproveResult:
-    """Run one harness² step on the latest replayable episode in `domain`, then adopt the
-    selected mind if it differs from the live one AND came with an evidence-backed lesson."""
-    home, mind = adapter.home, adapter.mind
+    """Run one harness² step on the latest replayable episode in `domain` and return the mind
+    it selected. This only *proposes*: it never adopts. harness² selects without ground truth,
+    so its choice is a candidate for the graded gate (`experiment.Harness2Optimizer`), which
+    alone decides whether the live mind changes."""
+    mind = adapter.mind
     episodes = adapter.journal.replayable(domain)
     if not episodes:
         return ImproveResult(episode_id="", status="no-episodes")
@@ -180,13 +202,13 @@ def improve(
     token = mode_token(mode)
     tag = f"v{mind.version}"
     adapter.snapshot_base()
-    lib = library_store.Library(root=home.library / f"k{k}", domain=domain, surface=SURFACE)
+    lib = library_store.Library(root=adapter.home.library / f"k{k}", domain=domain, surface=SURFACE)
     res = run_task(
         ep.id,
         k,
         adapter=adapter,
         prop=proposer,
-        runs_root=home.runs,
+        runs_root=adapter.home.runs,
         modes=(token,),
         tag=tag,
         library=lib,
@@ -199,41 +221,10 @@ def improve(
     if not sel.get("ok") or sel.get("chosen_tree_is_base", True):
         out.status = "kept-current-mind"
         return out
-    if not library_store.has_experience(out.lesson):
-        out.status = "no-evidence"
-        return out
-
-    work = Namespace(BENCH, SUBSTRATE, token, k, None, tag).task_dir(home.runs, ep.id)
+    work = Namespace(BENCH, SUBSTRATE, token, k, None, tag).task_dir(adapter.home.runs, ep.id)
     tree = harness_tree.read_tree(SURFACE, work / "harnesses" / sel["chosen_label"])
     if tree == mind.tree():
         out.status = "kept-current-mind"
         return out
-    evidence = "\n".join(f"- {key}: {out.lesson[key]}" for key in out.lesson)
-    source = f"harness2 {mode} k={k} on episode {ep.id} (from mind v{mind.version})"
-    state = home.load_state()
-    if state.get("auto_adopt", True):
-        out.adopted_version = mind.adopt(tree, why=out.why, evidence=evidence, source=source)
-        out.status = "adopted"
-    else:
-        pend = home.root / "pending" / ep.id
-        harness_tree.write_tree(SURFACE, tree, pend / "harness", stubs=False)
-        (pend / "proposal.json").write_text(
-            json.dumps({"why": out.why, "evidence": evidence, "source": source}, indent=2),
-            encoding="utf-8",
-        )
-        state["pending_adoptions"].append(ep.id)
-        home.save_state(state)
-        out.pending, out.status = str(pend), "pending-approval"
+    out.tree, out.status = tree, "candidate"
     return out
-
-
-def approve_pending(home: Home, episode_id: str) -> int:
-    pend = home.root / "pending" / episode_id
-    meta = json.loads((pend / "proposal.json").read_text(encoding="utf-8"))
-    tree = harness_tree.read_tree(SURFACE, pend / "harness")
-    version = Mind(home).adopt(tree, **meta)
-    state = home.load_state()
-    state["pending_adoptions"] = [p for p in state["pending_adoptions"] if p != episode_id]
-    home.save_state(state)
-    shutil.rmtree(pend, ignore_errors=True)
-    return version

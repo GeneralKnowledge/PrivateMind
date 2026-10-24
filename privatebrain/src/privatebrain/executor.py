@@ -27,6 +27,7 @@ class ExecResult:
     cost_usd: float = 0.0
     llm_calls: int = 0
     handled_by: str = "llm"
+    error_kind: str = ""  # see llm.classify
 
 
 class Executor(Protocol):
@@ -86,6 +87,7 @@ class SandboxedTextExecutor:
     ledger: Path | None = None
     purpose: str = "do the task under the given mind"
     alternative: str = "none: no deterministic capability matched this task"
+    max_budget_usd: float = 1.0  # per call, passed to the CLI; also what an unfinished call is charged
 
     def run(self, prompt, system, tree, workdir, timeout) -> ExecResult:
         workdir.mkdir(parents=True, exist_ok=True)
@@ -97,12 +99,14 @@ class SandboxedTextExecutor:
             model=self.model,
             timeout=timeout,
             ledger=self.ledger,
+            max_budget_usd=self.max_budget_usd,
         )
         (workdir / "deliverable.md").write_text(res.text, encoding="utf-8")
         (workdir / "trajectory.md").write_text(
             f"[ACTION] answer the task ({res.model})\n[OBSERVATION]\n{res.text}\n", encoding="utf-8"
         )
-        return ExecResult(ok=res.ok, error=res.error, cost_usd=res.cost_usd, llm_calls=1)
+        return ExecResult(ok=res.ok, error=res.error, cost_usd=res.cost_usd, llm_calls=1,
+                          error_kind=res.error_kind)
 
 
 DEFAULT_ALLOWED_TOOLS = (
@@ -117,16 +121,37 @@ DEFAULT_ALLOWED_TOOLS = (
 )
 
 
+class UnconfinedRefused(RuntimeError):
+    pass
+
+
+UNCONFINED_WARNING = (
+    "This executor gives the model Read, Write, Edit, WebFetch, WebSearch and "
+    "`Bash(python3 scripts/*)` on the host, as the operator's user, with the operator's "
+    "environment (including any credentials in it). It is NOT sandboxed: Read and WebFetch have "
+    "no path or host limits, and the model can write a script and then run it. Use it only "
+    "attended, by passing --allow-unconfined on that command."
+)
+
+
 @dataclass
 class ClaudeCodeExecutor:
     """Runs the Claude Code CLI headless, with the mind as its appended system prompt.
 
+    Not sandboxed (see UNCONFINED_WARNING), so it refuses to exist unless the caller says, on
+    each construction, that a person is attending: `unconfined_ok=True`. The CLI passes that
+    only for an explicit `--allow-unconfined` flag; no file, setting or model output can.
     Credentials come from the environment (ANTHROPIC_API_KEY or a logged-in CLI).
     """
 
     model: str = os.environ.get("PRIVATEBRAIN_MODEL", "")
     allowed_tools: tuple[str, ...] = DEFAULT_ALLOWED_TOOLS
     cli: str = field(default_factory=lambda: shutil.which("claude") or "claude")
+    unconfined_ok: bool = False
+
+    def __post_init__(self):
+        if not self.unconfined_ok:
+            raise UnconfinedRefused(UNCONFINED_WARNING)
 
     def run(self, prompt, system, tree, workdir, timeout) -> ExecResult:
         workdir.mkdir(parents=True, exist_ok=True)

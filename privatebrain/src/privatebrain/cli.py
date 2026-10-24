@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .brain import Brain
@@ -12,29 +14,115 @@ from . import experiment as xp
 from . import llm
 from .capabilities import REGISTRY, ComputeFirstExecutor
 from .executor import ClaudeCodeExecutor, SandboxedTextExecutor
-from .home import DEFAULT_HOME, Home
-from .improve import DirectClaudeProposer, approve_pending
+from .home import DEFAULT_HOME, Home, safe_id
+from .improve import BrainAdapter, DirectClaudeProposer, default_channel
 from .journal import Journal
 from .mind import Mind
 from .needs import STATUSES, Needs
-from . import recall, safety
+from . import lessons, recall, safety
+from . import substrate as substrate_mod
 from .events import EventLog
 from .substrate import AlreadyRunning, Substrate
 
+UNCONFINED_HELP = ("attended use only: allow the tool-using Claude Code executor and harness²'s proposer, "
+                   "which run with host access and are NOT sandboxed")
+
+
+def _gate_setup(home: Home, model: str, repeats: int = 3) -> xp.Setup:
+    ledger = home.root / "llm_calls.jsonl"
+    return xp.Setup(SandboxedTextExecutor(model=model, ledger=ledger), "sandboxed-text", model, repeats)
+
 
 def _brain(home: Home, args) -> Brain:
-    executor = ClaudeCodeExecutor()
-    if home.load_state().get("executor") == "compute-first":
-        executor = ComputeFirstExecutor(executor, ledger=home.root / "llm_calls.jsonl")
-    return Brain(
-        home,
-        executor,
-        proposer_factory=lambda adapter: DirectClaudeProposer(
-            adapter.spec.channels["proposer"], audit_dir=home.runs / "audit"
-        ),
-        timeout=args.timeout,
-        improve_k=args.k,
-    )
+    """The v0 executive. By default it does work with no tools (one sandboxed model call, after
+    the compute-first routes) and does not improve itself. Only --allow-unconfined, typed by a
+    person for that one command, gives it the tool-using executor and the harness² improver."""
+    ledger = home.root / "llm_calls.jsonl"
+    model = os.environ.get("PRIVATEBRAIN_MODEL") or llm.EVAL_MODEL
+    if args.allow_unconfined:
+        print(f"WARNING: {ClaudeCodeExecutor.__doc__.split(chr(10))[0]} {UNCONFINED_HELP}.", file=sys.stderr)
+        executor = ClaudeCodeExecutor(unconfined_ok=True)
+        if home.load_state().get("executor") == "compute-first":
+            executor = ComputeFirstExecutor(executor, ledger=ledger)
+        factory = lambda adapter: DirectClaudeProposer(  # noqa: E731
+            adapter.spec.channels["proposer"], audit_dir=home.runs / "audit", unconfined_ok=True)
+        gate = _gate_setup(home, llm.EVAL_MODEL)
+    else:
+        executor = ComputeFirstExecutor(SandboxedTextExecutor(model=model, ledger=ledger), model=model, ledger=ledger)
+        factory, gate = None, None
+    return Brain(home, executor, proposer_factory=factory, gate_setup=gate, timeout=args.timeout,
+                 improve_k=args.k)
+
+
+def _age(ts: str) -> str:
+    if not ts:
+        return "never"
+    secs = (datetime.now(timezone.utc) - datetime.fromisoformat(ts)).total_seconds()
+    return f"{secs:.0f}s ago" if secs < 120 else f"{secs / 60:.0f} min ago" if secs < 7200 else f"{secs / 3600:.1f} h ago"
+
+
+def status_report(home: Home) -> dict:
+    """Everything an operator needs to know, from the files the loop keeps, without a model."""
+    code, hl = substrate_mod.health(home)
+    sub = Substrate(home)
+    vit = sub.vitals
+    conn = vit.get("connectivity") or {}
+    counts = {s: sum(j.state == s for j in sub.jobs) for s in ("queued", "running", "waiting", "blocked", "done", "failed")}
+    approved = safety.approvals(home)
+    needs_approval = [{"job": j.id, "for": safety.required_approval(j), "why": j.reason,
+                       "command": f"privatebrain approve {j.id}"}
+                      for j in sub.jobs if j.state == "blocked" and not safety.is_approved(j, approved)
+                      and safety.required_approval(j)]
+    ledger = home.root / "llm_calls.jsonl"
+    spent = safety.spent_today(home)
+    budget = safety.DAILY_MODEL_BUDGET_USD
+    exps = [r for r in xp.log(home) if r.get("kind") != "adoption"]
+    last = exps[-1] if exps else None
+    state = home.load_state()
+    return {
+        "health": {"code": code, **hl},
+        "remote_model": {"available": conn.get("remote_model"), "mode": conn.get("mode", "unknown"),
+                         "reasons": conn.get("reasons", []), "as_of": conn.get("probed_at")},
+        "jobs": counts,
+        "waiting": [{"job": j.id, "for": j.waiting_for, "why": j.reason} for j in sub.jobs if j.state == "waiting"],
+        "blocked": [{"job": j.id, "for": j.waiting_for, "why": j.reason} for j in sub.jobs if j.state == "blocked"],
+        "failed": [{"job": j.id, "why": j.reason} for j in sub.jobs if j.state == "failed"][-5:],
+        "needs_approval": needs_approval,
+        "budget": {"spent_today_usd": spent, "daily_limit_usd": budget, "exceeded": spent >= budget,
+                   "calls_with_unknown_cost": len(llm.unfinished_calls(ledger))},
+        "mind": {"version": state["mind_version"], "versions": Mind(home).versions(), "auto_adopt": state["auto_adopt"],
+                 "pending_approval": xp.pending(home),
+                 "last_experiment": ({k: last.get(k) for k in ("id", "kind", "decision", "reasons", "finished")}
+                                     if last else None)},
+        "needs": [f"{n.name} ({n.status})" for n in Needs(home).all()],
+        "inbox": len(Journal(home).queued()),
+    }
+
+
+def render_status(r: dict) -> str:
+    h, rm, b, m = r["health"], r["remote_model"], r["budget"], r["mind"]
+    beat = f"heartbeat {_age(h['heartbeat'] or '')}" if h.get("heartbeat") else "no heartbeat yet"
+    lines = [f"brain:   {h['status']}" + (f" (pid {h['pid']})" if h.get("pid") else "") + f"; {beat}"]
+    avail = "available" if rm["available"] else f"unavailable ({', '.join(rm['reasons']) or 'not probed yet'})"
+    lines.append(f"mode:    {rm['mode']}; remote model {avail}; last probed {_age(rm['as_of'] or '')}")
+    lines.append(f"budget:  ${b['spent_today_usd']:.4f} of ${b['daily_limit_usd']:.2f} today"
+                 + (" EXCEEDED: model work waits" if b["exceeded"] else "")
+                 + (f"; {b['calls_with_unknown_cost']} killed call(s) charged at their cap" if b["calls_with_unknown_cost"] else ""))
+    lines.append("jobs:    " + ", ".join(f"{k} {v}" for k, v in r["jobs"].items()) + f"; {r['inbox']} not yet taken in")
+    for key in ("waiting", "blocked"):
+        for j in r[key]:
+            lines.append(f"  {key} {j['job']} for {', '.join(j['for'])}: {j['why']}")
+    for j in r["failed"]:
+        lines.append(f"  failed {j['job']}: {j['why']}")
+    if r["needs_approval"]:
+        lines.append("approve: " + "; ".join(f"{a['job']} ({a['for']}): `{a['command']}`" for a in r["needs_approval"]))
+    le = m["last_experiment"]
+    lines.append(f"mind:    v{m['version']} (versions {m['versions']}, auto-adopt {'on' if m['auto_adopt'] else 'off'})"
+                 + (f"; last experiment {le['id']} {le['decision']}: {'; '.join(le['reasons'] or [])[:160]}" if le else "")
+                 + (f"; waiting for `mind approve`: {', '.join(m['pending_approval'])}" if m["pending_approval"] else ""))
+    if r["needs"]:
+        lines.append(f"needs:   {', '.join(r['needs'])}")
+    return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -61,7 +149,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     k = sub.add_parser("tick", help="let the executive choose and run activities")
     k.add_argument("--steps", type=int, default=1)
-    sub.add_parser("status")
+    k.add_argument("--allow-unconfined", action="store_true", help=UNCONFINED_HELP)
+    st_ = sub.add_parser("status", help="is it running, online, within budget; jobs, approvals, mind")
+    st_.add_argument("--json", action="store_true")
+    sub.add_parser("health", help="for a supervisor: exit 0 healthy, 1 stalled, 2 not running")
     n = sub.add_parser("need", help="manage needs")
     nsub = n.add_subparsers(dest="need_cmd", required=True)
     na = nsub.add_parser("add")
@@ -73,10 +164,10 @@ def main(argv: list[str] | None = None) -> int:
     m = sub.add_parser("mind", help="inspect or roll back the mind")
     msub = m.add_subparsers(dest="mind_cmd", required=True)
     msub.add_parser("log")
-    mr = msub.add_parser("rollback")
-    mr.add_argument("version", type=int)
-    ma = msub.add_parser("approve", help="adopt a pending mind proposal")
-    ma.add_argument("episode_id")
+    mr = msub.add_parser("rollback", help="make an earlier version live (default: the one before)")
+    mr.add_argument("version", type=int, nargs="?")
+    ma = msub.add_parser("approve", help="adopt a candidate that passed the gate while auto-adopt was off")
+    ma.add_argument("experiment_id")
     mo = msub.add_parser("auto-adopt", help="adopt improvements without asking (on|off)")
     mo.add_argument("value", choices=("on", "off"))
     f = sub.add_parser("floor", help="the operator's boundaries")
@@ -87,7 +178,9 @@ def main(argv: list[str] | None = None) -> int:
     x = sub.add_parser("experiment", help="graded experiments on the mind and the executor")
     xsub = x.add_subparsers(dest="exp_cmd", required=True)
     xr = xsub.add_parser("run", help="one experiment: baseline, propose, evaluate, keep or reject")
-    xr.add_argument("--optimizer", choices=("gepa",), default="gepa")
+    xr.add_argument("--optimizer", choices=("gepa", "harness2"), default="gepa")
+    xr.add_argument("--domain", default="general", help="harness2: the journal domain to improve from")
+    xr.add_argument("--allow-unconfined", action="store_true", help=UNCONFINED_HELP)
     xr.add_argument("--budget", type=int, default=60, help="task runs GEPA may spend")
     xr.add_argument("--repeats", type=int, default=3)
     xr.add_argument("--model", default=llm.EVAL_MODEL, help="model the mind runs on")
@@ -99,6 +192,7 @@ def main(argv: list[str] | None = None) -> int:
     xsub.add_parser("log")
     xs = xsub.add_parser("show")
     xs.add_argument("id")
+    xsub.add_parser("lessons", help="what earlier experiments found, with evidence and limits")
     sub.add_parser("capabilities", help="list deterministic capabilities")
 
     r = sub.add_parser("run", help="the substrate loop: senses, safety, known work; models optional")
@@ -115,7 +209,7 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--type", default=None)
     rc = sub.add_parser("recall", help="search local memory (BM25, no model)")
     rc.add_argument("query")
-    ap = sub.add_parser("approve", help="approve a blocked job (the safety layer reads this)")
+    ap = sub.add_parser("approve", help="approve what a blocked job is waiting for (once, for that reason only)")
     ap.add_argument("job_id")
     ap.add_argument("--note", default="")
 
@@ -150,24 +244,12 @@ def main(argv: list[str] | None = None) -> int:
             r = brain.tick()
             print(f"[{r.activity}] {r.detail}")
     elif args.cmd == "status":
-        state = home.load_state()
-        j = Journal(home)
-        print(
-            json.dumps(
-                {
-                    "home": str(home.root),
-                    "mind_version": mind.version,
-                    "versions": mind.versions(),
-                    "auto_adopt": state["auto_adopt"],
-                    "pending_adoptions": state["pending_adoptions"],
-                    "queued_tasks": len(j.queued()),
-                    "episodes": len(j.episodes()),
-                    "needs": [f"{n.name} ({n.status})" for n in Needs(home).all()],
-                    "recent_activity": state["activities"][-10:],
-                },
-                indent=2,
-            )
-        )
+        r = status_report(home)
+        print(json.dumps(r, indent=2) if args.json else render_status(r))
+    elif args.cmd == "health":
+        code, report = substrate_mod.health(home)
+        print(json.dumps(report))
+        return code
     elif args.cmd == "need":
         needs = Needs(home)
         if args.need_cmd == "add":
@@ -181,9 +263,14 @@ def main(argv: list[str] | None = None) -> int:
                 head = (home.mind_versions / str(v) / "ADOPTION.md").read_text().splitlines()
                 print(f"{marker} v{v}  {next((h for h in head if 'source' in h), '')}")
         elif args.mind_cmd == "rollback":
-            mind.rollback(args.version)
+            print(f"mind v{mind.rollback(args.version)} is live")
         elif args.mind_cmd == "approve":
-            print(f"adopted as v{approve_pending(home, args.episode_id)}")
+            try:
+                v = xp.adopt_candidate(home, args.experiment_id, approved_by="operator")
+            except (xp.AdoptionRefused, ValueError) as exc:
+                print(f"not adopted: {exc}", file=sys.stderr)
+                return 1
+            print(f"adopted as v{v}")
         else:
             state = home.load_state()
             state["auto_adopt"] = args.value == "on"
@@ -199,22 +286,42 @@ def main(argv: list[str] | None = None) -> int:
             return xp.Setup(plain, "sandboxed-text", args.model, args.repeats)
 
         if args.exp_cmd == "run":
-            opt = xp.GepaOptimizer(max_metric_calls=args.budget, ledger=ledger)
+            if args.optimizer == "harness2":
+                if not args.allow_unconfined:
+                    print("harness² runs its editor with an unrestricted shell; it is not sandboxed. "
+                          "Run it attended with --allow-unconfined.", file=sys.stderr)
+                    return 2
+                gate = setup(args.compute_first)
+                opt = xp.Harness2Optimizer(
+                    lambda: BrainAdapter(home, gate.executor, default_channel(), timeout=args.timeout),
+                    DirectClaudeProposer(default_channel(), audit_dir=home.runs / "audit", unconfined_ok=True),
+                    args.domain, k=args.k)
+            else:
+                opt = xp.GepaOptimizer(max_metric_calls=args.budget, ledger=ledger)
             st = xp.run_experiment(home, setup(args.compute_first), opt, resume=not args.no_resume)
             print((home.root / "experiments" / st["id"] / "RECORD.md").read_text(encoding="utf-8"))
         elif args.exp_cmd == "compare-executors":
             st = xp.compare_setups(home, setup(False), setup(True))
-            if st["decision"] == "kept":
-                state = home.load_state()
+            state = home.load_state()
+            if st["decision"] == "kept" and state.get("auto_adopt", True):
                 state["executor"] = "compute-first"
                 home.save_state(state)
+            elif st["decision"] == "kept":
+                print("kept by the gate; auto-adopt is off, so the executor is unchanged", file=sys.stderr)
             print((home.root / "experiments" / st["id"] / "RECORD.md").read_text(encoding="utf-8"))
         elif args.exp_cmd == "log":
             for row in xp.log(home):
                 print(f"{row['id']}  {row['kind']:<16} {row['decision']:<16} ${row['total_cost_usd']}  "
                       f"{'; '.join(row['reasons'])[:120]}")
+        elif args.exp_cmd == "lessons":
+            for r in lessons.all_rows(home):
+                ev = r.get("evidence", [{}])[0]
+                print(f"{r.get('id')}  [{r.get('status')}]  {r.get('claim')}\n    evidence: experiment "
+                      f"{ev.get('experiment')}, train gain {ev.get('train_gain')}, held-out delta "
+                      f"{ev.get('heldout_delta')}, safety {'passed' if ev.get('safety') else 'FAILED'}; "
+                      f"informed by {r.get('informed_by') or 'nothing earlier'}")
         else:
-            print((home.root / "experiments" / args.id / "RECORD.md").read_text(encoding="utf-8"))
+            print((home.root / "experiments" / safe_id(args.id) / "RECORD.md").read_text(encoding="utf-8"))
     elif args.cmd == "capabilities":
         print(json.dumps([c.describe() for c in REGISTRY.values()], indent=2))
     elif args.cmd == "run":
@@ -240,8 +347,16 @@ def main(argv: list[str] | None = None) -> int:
     elif args.cmd == "recall":
         print(recall.render(args.query, recall.search(home, args.query)), end="")
     elif args.cmd == "approve":
-        safety.approve(home, args.job_id, args.note)
-        print(f"approved {args.job_id}")
+        found = [j for j in Substrate(home).jobs if j.id == args.job_id]
+        if not found:
+            print(f"no job {args.job_id!r}", file=sys.stderr)
+            return 1
+        try:
+            print(f"{safety.approve(home, found[0], args.note)}: {args.job_id} "
+                  f"({safety.required_approval(found[0])}); the loop picks it up on its next tick")
+        except ValueError as exc:
+            print(exc, file=sys.stderr)
+            return 1
     elif args.cmd == "floor":
         if args.floor_cmd == "show":
             print(home.floor.read_text(encoding="utf-8"))

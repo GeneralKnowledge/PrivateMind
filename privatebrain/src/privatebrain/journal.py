@@ -6,7 +6,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 
-from .home import Home, append_jsonl, locked, read_jsonl, write_jsonl
+from .home import Home, append_jsonl, locked, read_jsonl, read_jsonl_tolerant, write_jsonl
 
 
 @dataclass
@@ -62,6 +62,26 @@ class Journal:
                 return None
             write_jsonl(self.home.tasks, rows[1:])
         return Task(**rows[0])
+
+    def inbox(self) -> tuple[list[dict], list[str]]:
+        """Every queued row without removing it, plus malformed lines. The substrate copies
+        rows into its own durable job list first and only then calls `remove`, so a crash in
+        between duplicates a row (dropped by id on the next read) instead of losing it."""
+        with locked(self.home.tasks):
+            return read_jsonl_tolerant(self.home.tasks)
+
+    def remove(self, ids: set[str]) -> list[str]:
+        """Drop these rows from the queue. Malformed lines move to `tasks.rejected.jsonl`
+        (kept for the operator, never run). Returns the malformed lines moved."""
+        with locked(self.home.tasks):
+            rows, bad = read_jsonl_tolerant(self.home.tasks)
+            keep = [r for r in rows if r.get("id") not in ids]
+            for line in bad:
+                append_jsonl(self.home.root / "tasks.rejected.jsonl",
+                             {"line": line[:2000], "at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
+            if bad or len(keep) != len(rows):
+                write_jsonl(self.home.tasks, keep)
+        return bad
 
     def record(self, ep: Episode) -> None:
         ep.created = ep.created or datetime.now(timezone.utc).isoformat(timespec="seconds")
