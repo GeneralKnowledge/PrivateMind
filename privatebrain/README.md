@@ -34,11 +34,24 @@ privatebrain mind log                     # every adopted mind, with its evidenc
 privatebrain mind rollback 0
 ```
 
+Graded experiments and compute-first routing (see [DESIGN.md](DESIGN.md) and [EXPERIMENTS.md](EXPERIMENTS.md)):
+
+```bash
+privatebrain experiment run --budget 60 --repeats 3   # baseline, GEPA candidate, keep or reject
+privatebrain experiment compare-executors             # model-only vs compute-first, same gate
+privatebrain experiment log                           # every experiment, append-only
+privatebrain experiment show <id>                     # one record: hypothesis, scores, diff, decision
+privatebrain capabilities                             # the deterministic capabilities and their limits
+```
+
+An interrupted `experiment run` resumes where it stopped: finished task runs are cached.
+
 | Setting | Meaning |
 |---|---|
 | `ANTHROPIC_API_KEY` (or a logged-in `claude`) | Credentials for both the agent and the improver |
 | `PRIVATEBRAIN_MODEL` | Model for doing tasks (CLI default if unset) |
-| `PRIVATEBRAIN_IMPROVER_MODEL` | Model for harness² editing and selection |
+| `PRIVATEBRAIN_IMPROVER_MODEL` | Model for harness² editing and selection, and GEPA reflection (default `claude-opus-5-5`) |
+| `PRIVATEBRAIN_EVAL_MODEL` | Model the mind runs on in experiments (default `claude-haiku-5-5`) |
 | `privatebrain mind auto-adopt off` | Queue improvements for `mind approve <episode>` instead of adopting them |
 
 Tasks marked `--side-effects` are journaled but never replayed, because harness²

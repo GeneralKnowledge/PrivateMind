@@ -79,7 +79,7 @@ def main(argv: list[str] | None = None) -> int:
     xsub = x.add_subparsers(dest="exp_cmd", required=True)
     xr = xsub.add_parser("run", help="one experiment: baseline, propose, evaluate, keep or reject")
     xr.add_argument("--optimizer", choices=("gepa",), default="gepa")
-    xr.add_argument("--budget", type=int, default=30, help="GEPA metric calls (task runs) to spend")
+    xr.add_argument("--budget", type=int, default=60, help="task runs GEPA may spend")
     xr.add_argument("--repeats", type=int, default=3)
     xr.add_argument("--model", default=llm.EVAL_MODEL, help="model the mind runs on")
     xr.add_argument("--compute-first", action="store_true", help="evaluate with deterministic routes on")
@@ -163,7 +163,7 @@ def main(argv: list[str] | None = None) -> int:
             plain = SandboxedTextExecutor(model=args.model, ledger=ledger)
             if compute_first:
                 return xp.Setup(ComputeFirstExecutor(plain, model=args.model, ledger=ledger),
-                                "compute-first+sandboxed-text", args.model, args.repeats)
+                                "compute-first/2+sandboxed-text", args.model, args.repeats)
             return xp.Setup(plain, "sandboxed-text", args.model, args.repeats)
 
         if args.exp_cmd == "run":

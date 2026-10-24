@@ -93,7 +93,7 @@ def run_one(home: Home, setup: Setup, system: str, tree, task: suite.Task, repea
     key = _sha(f"{system}\0{setup.executor_label}\0{setup.model}")
     cache = home.root / "evals" / key / f"{task.id}-{task.fingerprint}-r{repeat}.json"
     if cache.is_file():
-        return RunResult.from_dict(json.loads(cache.read_text(encoding="utf-8")))
+        return regrade(RunResult.from_dict(json.loads(cache.read_text(encoding="utf-8"))), task)
     workdir = home.root / "evals" / key / "runs" / f"{task.id}-r{repeat}"
     shutil.rmtree(workdir, ignore_errors=True)
     t0 = time.monotonic()
@@ -112,6 +112,13 @@ def run_one(home: Home, setup: Setup, system: str, tree, task: suite.Task, repea
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.write_text(json.dumps(asdict(out), indent=2), encoding="utf-8")
     return out
+
+
+def regrade(r: RunResult, task: suite.Task) -> RunResult:
+    """Grading is cheap and deterministic, so it is never cached: only the model output is."""
+    g = task.grade(r.deliverable)
+    r.score, r.checks, r.feedback = g.score, g.to_dict()["checks"], g.feedback
+    return r
 
 
 def evaluate(home: Home, setup: Setup, system: str, tree, tasks: list[suite.Task]) -> list[RunResult]:
@@ -261,7 +268,7 @@ class Optimizer(Protocol):
 
     def propose(
         self, *, tree: harness_tree.Tree, weakness: dict, train: list[suite.Task],
-        run: Callable[[harness_tree.Tree, suite.Task], RunResult], workdir: Path,
+        run: Callable[[harness_tree.Tree, suite.Task, int], RunResult], workdir: Path,
     ) -> Proposal: ...
 
 
@@ -286,10 +293,11 @@ class GepaOptimizer:
     candidate it returns still has to pass this module's gate on held-out and safety tasks.
     """
 
-    max_metric_calls: int = 30
+    max_metric_calls: int = 60  # task runs (samples count individually)
     components: tuple[str, ...] = OPTIMIZABLE
     reflection_model: str = field(default_factory=lambda: llm.IMPROVER_MODEL)
     minibatch: int = 3
+    samples: int = 3  # runs per task per evaluation; the gate's repeats are cached and reused
     ledger: Path | None = None
     name: str = "gepa"
 
@@ -300,16 +308,24 @@ class GepaOptimizer:
         spent = {"cost": 0.0, "calls": 0}
         base = dict(tree)
 
+        samples = self.samples
+
         class MindAdapter:
             propose_new_texts = None
 
             def evaluate(self, batch, candidate, capture_traces=False):
+                # Several samples per task, scored by their mean, and the worst one shown to the
+                # reflection model: with one sample an intermittent failure is invisible (seen in
+                # the second real experiment, where a 67% failure rate looked like a pass).
                 t = {**base, **candidate}
-                results = [run(t, task) for task in batch]
-                traces = [{"task": r.task, "prompt": task.prompt, "output": r.deliverable, "feedback": r.feedback}
-                          for r, task in zip(results, batch)]
-                return EvaluationBatch(outputs=[r.deliverable for r in results], scores=[r.score for r in results],
-                                       trajectories=traces if capture_traces else None)
+                per_task = [[run(t, task, r) for r in range(samples)] for task in batch]
+                worst = [min(rs, key=lambda r: r.score) for rs in per_task]
+                traces = [{"task": w.task, "prompt": task.prompt, "output": w.deliverable, "feedback": w.feedback}
+                          for w, task in zip(worst, batch)]
+                return EvaluationBatch(outputs=[w.deliverable for w in worst],
+                                       scores=[mean(r.score for r in rs) for rs in per_task],
+                                       trajectories=traces if capture_traces else None,
+                                       num_metric_calls=len(batch) * samples)
 
             def make_reflective_dataset(self, candidate, eval_batch, components_to_update):
                 rows = [{"Inputs": tr["prompt"], "Generated Outputs": tr["output"], "Feedback": tr["feedback"]}
@@ -487,7 +503,7 @@ def run_experiment(
         train = suite.tasks("train")
         prop = optimizer.propose(
             tree=base_tree, weakness=weakness, train=train,
-            run=lambda t, task: run_one(home, setup, system_of(t), t, task, 0),
+            run=lambda t, task, repeat=0: run_one(home, setup, system_of(t), t, task, repeat),
             workdir=exp.dir,
         )
         harness_tree.write_tree(SURFACE, prop.tree, cand_dir, stubs=False)
