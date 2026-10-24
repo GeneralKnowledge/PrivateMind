@@ -159,7 +159,8 @@ def test_crash_recovery_requeues_and_holds_side_effects_for_approval(home):
     r = job(sub, risky.id)
     assert r.state == "blocked" and r.waiting_for == ["approval"]
 
-    safety.approve(home, risky.id)
+    assert safety.approve(home, r) == "approved"
+    assert safety.approve(home, r) == "already approved"  # a duplicate adds nothing
     net.network = net.provider = True
     sub = make(home, net)
     sub.run(max_ticks=5, interval=0, until_idle=True)
@@ -249,9 +250,19 @@ def test_deadlines_and_recurring_jobs(home):
 
 
 def test_one_loop_at_a_time(home):
-    (home.root / "substrate.lock").write_text(str(os.getppid()))
+    first = make(home, Net())
+    first.start()
     with pytest.raises(AlreadyRunning):
         make(home, Net()).start()
+    first.stop()
+    # A pid left in the lock file by a dead loop does not block a restart, whatever the pid,
+    # because the kernel released the lock when that process died.
+    (home.root / "substrate.lock").write_text(str(os.getppid()))
+    again = make(home, Net())
+    again.start()
+    assert "crash_recovered" in types(home)
+    again.stop()
+    assert (home.root / "substrate.lock").read_text() == ""  # a clean stop leaves it empty
 
 
 def test_daily_model_budget_makes_model_work_wait(home):

@@ -5,6 +5,7 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import re
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -94,6 +95,36 @@ def read_jsonl(path: Path) -> list[dict]:
     if not path.is_file():
         return []
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+
+
+def read_jsonl_tolerant(path: Path) -> tuple[list[dict], list[str]]:
+    """(rows, bad lines). For files a loop must keep reading even when a line is malformed
+    (a torn write, a hand edit): one bad line must not stop the brain, nor be silently used."""
+    rows, bad = [], []
+    if not path.is_file():
+        return rows, bad
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            bad.append(line)
+            continue
+        (rows if isinstance(row, dict) else bad).append(row if isinstance(row, dict) else line)
+    return rows, bad
+
+
+_SAFE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,95}")
+
+
+def safe_id(value) -> str:
+    """An id that is safe to join to a directory: no separators, no `..`, bounded length.
+    Raises ValueError otherwise. Job, episode and experiment ids all become path parts."""
+    s = str(value)
+    if not _SAFE_ID.fullmatch(s) or ".." in s:
+        raise ValueError(f"not a valid id: {s[:100]!r}")
+    return s
 
 
 def write_jsonl(path: Path, rows: list[dict]) -> None:

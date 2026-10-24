@@ -17,6 +17,7 @@ before. A route never guesses: on anything it cannot parse exactly it declines.
 
 from __future__ import annotations
 
+import inspect
 import json
 import re
 from dataclasses import dataclass, field
@@ -31,6 +32,11 @@ from .executor import ExecResult, Executor
 
 class CapabilityError(ValueError):
     """Raised for input a capability refuses. The message says what was wrong."""
+
+
+class CapabilityFault(RuntimeError):
+    """The capability itself went wrong: it raised something it does not document, or its
+    output failed the independent check. Never reported as a success, never retried blindly."""
 
 
 @dataclass(frozen=True)
@@ -48,9 +54,14 @@ class Capability:
     limitations: tuple[str, ...] = ()
     failure_modes: tuple[str, ...] = ()
     validation: str = ""
+    # Enforced at the call boundary (`call`), whoever asked: the operator's CLI, a model's
+    # proposal, or a route. `check_args` returns the arguments to use (coerced) or raises
+    # CapabilityError; `verify` re-derives the output independently and returns a problem or "".
+    check_args: Callable[[dict], dict] | None = field(default=None, repr=False)
+    verify: Callable[[dict, Any], str] | None = field(default=None, repr=False)
 
     def describe(self) -> dict:
-        return {k: v for k, v in self.__dict__.items() if k != "fn"}
+        return {k: v for k, v in self.__dict__.items() if k not in ("fn", "check_args", "verify")}
 
 
 REGISTRY: dict[str, Capability] = {}
@@ -61,8 +72,60 @@ def register(cap: Capability) -> Capability:
     return cap
 
 
+def _signature_check(cap: Capability, args: Any) -> dict:
+    if not isinstance(args, dict):
+        raise CapabilityError(f"{cap.name}: arguments must be a JSON object, not {type(args).__name__}")
+    params = inspect.signature(cap.fn).parameters
+    unknown = sorted(set(args) - set(params))
+    if unknown:
+        raise CapabilityError(f"{cap.name}: unknown argument(s) {unknown}; accepts {sorted(params)}")
+    missing = [n for n, p in params.items() if p.default is p.empty and n not in args]
+    if missing:
+        raise CapabilityError(f"{cap.name}: missing argument(s) {missing}")
+    return dict(args)
+
+
+def call_check(name: str, args: Any) -> dict:
+    """Check arguments without running anything: used when a job is proposed or dispatched."""
+    if name not in REGISTRY:
+        raise CapabilityError(f"no capability named {name!r}")
+    cap = REGISTRY[name]
+    args = _signature_check(cap, args)
+    return cap.check_args(args) if cap.check_args is not None else args
+
+
+def call(name: str, args: Any) -> Any:
+    """The one way to run a capability. Arguments are checked here, at execution time, not
+    only when a task was created; the output is checked independently before it is returned.
+    Raises CapabilityError for input the capability refuses and CapabilityFault for anything
+    else that goes wrong, so a caller can never mistake a failure for a result."""
+    if name not in REGISTRY:
+        raise CapabilityError(f"no capability named {name!r}")
+    cap = REGISTRY[name]
+    args = call_check(name, args)
+    try:
+        result = cap.fn(**args)
+    except CapabilityError:
+        raise
+    except Exception as exc:  # undocumented failure: a fault, not an answer
+        raise CapabilityFault(f"{name} raised {type(exc).__name__}: {exc}") from exc
+    if cap.verify is not None:
+        try:
+            problem = cap.verify(args, result)
+        except Exception as exc:
+            problem = f"verifier raised {type(exc).__name__}: {exc}"
+        if problem:
+            raise CapabilityFault(f"{name} output failed its independent check: {problem}")
+    return result
+
+
 def invoke(name: str, **kwargs) -> Any:
-    return REGISTRY[name].fn(**kwargs)
+    return call(name, kwargs)
+
+
+def _need(cond: bool, msg: str) -> None:
+    if not cond:
+        raise CapabilityError(msg)
 
 
 # --- dates -----------------------------------------------------------------------------------
@@ -144,6 +207,31 @@ def normalize_dates(text: str, reference: date | None = None) -> str:
     return _NATURAL_DATE.sub(sub, text)
 
 
+def _dates_args(a: dict) -> dict:
+    _need(isinstance(a.get("text"), str), "dates.normalize: text must be a string")
+    _need(len(a["text"]) <= 100_000, "dates.normalize: text is over 100,000 characters")
+    ref = a.get("reference")
+    if isinstance(ref, str):
+        try:
+            a["reference"] = date.fromisoformat(ref)
+        except ValueError as exc:
+            raise CapabilityError(f"dates.normalize: reference {ref!r} is not YYYY-MM-DD") from exc
+    _need(a.get("reference") is None or isinstance(a["reference"], date),
+          "dates.normalize: reference must be a YYYY-MM-DD string or null")
+    return a
+
+
+def _dates_verify(a: dict, out: Any) -> str:
+    if not isinstance(out, str):
+        return "output is not text"
+    for iso in set(re.findall(r"\b\d{4}-\d{2}-\d{2}\b", out)) - set(re.findall(r"\b\d{4}-\d{2}-\d{2}\b", a["text"])):
+        try:
+            date.fromisoformat(iso)
+        except ValueError:
+            return f"wrote {iso}, which is not a real date"
+    return ""
+
+
 register(Capability(
     name="dates.normalize",
     purpose="Rewrite natural-language dates in text as ISO 8601 (YYYY-MM-DD).",
@@ -160,6 +248,8 @@ register(Capability(
         "raises CapabilityError for a year-less date with no reference",
     ),
     validation="round-trip: date.fromisoformat on each output date; weekday cross-check",
+    check_args=lambda a: _dates_args(a),
+    verify=lambda a, out: _dates_verify(a, out),
 ))
 
 
@@ -207,6 +297,42 @@ def sum_line_items(items: list[dict], currency: str, budget: Any = None) -> dict
     return out
 
 
+_ITEM_KEYS = {"label", "quantity", "unit_price", "currency"}
+
+
+def _money_args(a: dict) -> dict:
+    items = a.get("items")
+    _need(isinstance(items, list) and 0 < len(items) <= 1000, "money.sum_line_items: items must be a list of 1 to 1000 objects")
+    for i, it in enumerate(items):
+        _need(isinstance(it, dict), f"money.sum_line_items: item {i} must be an object, not {type(it).__name__}")
+        extra = set(it) - _ITEM_KEYS
+        _need(not extra, f"money.sum_line_items: item {i} has unknown field(s) {sorted(extra)}")
+        _need("unit_price" in it, f"money.sum_line_items: item {i} has no unit_price")
+        for k in ("quantity", "unit_price"):
+            _need(k not in it or isinstance(it[k], (str, int)) and not isinstance(it[k], bool),
+                  f"money.sum_line_items: item {i} {k} must be a number as a string or an integer")
+    cur = a.get("currency")
+    _need(isinstance(cur, str) and re.fullmatch(r"[A-Z]{3}", cur or "") is not None,
+          "money.sum_line_items: currency must be a three-letter ISO code such as EUR")
+    b = a.get("budget")
+    _need(b is None or isinstance(b, (str, int)) and not isinstance(b, bool),
+          "money.sum_line_items: budget must be a number as a string, an integer, or absent")
+    return a
+
+
+def _money_verify(a: dict, out: Any) -> str:
+    from fractions import Fraction
+
+    total = sum((Fraction(str(it.get("quantity", 1)).replace(",", "")) * Fraction(str(it["unit_price"]).replace(",", ""))
+                 for it in a["items"]), Fraction(0))
+    want = Decimal(total.numerator) / Decimal(total.denominator)
+    if Decimal(out["total"]) != want.quantize(_CENT, ROUND_HALF_UP):
+        return f"total {out['total']} but the items sum to {want}"
+    if "fits" in out and out["fits"] != (Decimal(out["total"]) <= Decimal(out["budget"])):
+        return "fits does not agree with total and budget"
+    return ""
+
+
 register(Capability(
     name="money.sum_line_items",
     purpose="Total a list of priced line items exactly, and compare it with a budget.",
@@ -221,7 +347,9 @@ register(Capability(
                  "rounds half-up to cents once, at the end; remaining is budget minus the rounded total"),
     failure_modes=("raises CapabilityError on floats, non-numbers, non-positive quantities, "
                    "negative prices, mixed currencies, or no items",),
-    validation="independent recomputation; unit tests with hand-worked expected totals",
+    validation="independent recomputation at the call boundary; unit tests with hand-worked totals",
+    check_args=lambda a: _money_args(a),
+    verify=lambda a, out: _money_verify(a, out),
 ))
 
 
@@ -254,6 +382,23 @@ def find_overlaps(events: list[dict]) -> list[dict]:
     return clashes
 
 
+def _calendar_args(a: dict) -> dict:
+    evs = a.get("events")
+    _need(isinstance(evs, list) and len(evs) <= 1000, "calendar.find_overlaps: events must be a list of at most 1000")
+    for i, ev in enumerate(evs):
+        _need(isinstance(ev, dict), f"calendar.find_overlaps: event {i} must be an object")
+        _need(isinstance(ev.get("start"), str) and isinstance(ev.get("end"), str),
+              f"calendar.find_overlaps: event {i} needs start and end as ISO strings")
+    return a
+
+
+def _calendar_verify(a: dict, out: Any) -> str:
+    evs = [(datetime.fromisoformat(e["start"]), datetime.fromisoformat(e["end"])) for e in a["events"]]
+    brute = sum(1 for i in range(len(evs)) for j in range(i + 1, len(evs))
+                if evs[i][0] < evs[j][1] and evs[j][0] < evs[i][1])
+    return "" if brute == len(out) else f"found {len(out)} clashes; a brute-force check finds {brute}"
+
+
 register(Capability(
     name="calendar.find_overlaps",
     purpose="Find every pair of calendar events whose times overlap.",
@@ -263,7 +408,9 @@ register(Capability(
     limitations=("events must not cross midnight in the text form the route parses",),
     failure_modes=("raises CapabilityError on unparseable times, end <= start, or mixed "
                    "aware/naive times",),
-    validation="pairwise brute-force check in tests; half-open intervals",
+    validation="pairwise brute-force recheck at the call boundary; half-open intervals",
+    check_args=lambda a: _calendar_args(a),
+    verify=lambda a, out: _calendar_verify(a, out),
 ))
 
 
@@ -319,11 +466,14 @@ def calendar_route(prompt: str) -> RouteOutcome | None:
             )
         except CapabilityError:
             return None
-        s, e = (datetime.combine(day, datetime.strptime(t, "%H:%M").time()) for t in (m.group("s"), m.group("e")))
+        try:
+            s, e = (datetime.combine(day, datetime.strptime(t, "%H:%M").time()) for t in (m.group("s"), m.group("e")))
+        except ValueError:
+            return None  # e.g. 25:00: not a time we can read exactly
         events.append({"title": m.group("title"), "start": s.isoformat(), "end": e.isoformat()})
     try:
         clashes = invoke("calendar.find_overlaps", events=events)
-    except CapabilityError:
+    except (CapabilityError, CapabilityFault):
         return None
     return RouteOutcome(_render_clashes(clashes), "capability:calendar.find_overlaps",
                         detail={"events": events, "clashes": clashes})
@@ -380,7 +530,7 @@ def _json_object(text: str) -> dict:
     if not m:
         raise CapabilityError("no JSON object in the model's reply")
     try:
-        return json.loads(m.group(0))
+        return json.loads(m.group(0), parse_float=str)  # keep the digits the model wrote
     except json.JSONDecodeError as exc:
         raise CapabilityError(f"invalid JSON from the model: {exc}") from exc
 
@@ -389,28 +539,49 @@ def _numbers_in(text: str) -> set[Decimal]:
     return {Decimal(n.replace(",", "")) for n in re.findall(r"\d[\d,]*(?:\.\d+)?", text)}
 
 
+_NUMBER_WORDS = {w: Decimal(i) for i, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve".split())}
+# A line that states a price for several things at once ("3 tickets, 90 in total") is
+# ambiguous between a unit price and a line total. The route declines rather than guess.
+_LINE_TOTAL = re.compile(r"\b(total|in all|altogether|combined|for (?:all|both|the lot))\b", re.I)
+
+
+def _quantities_in(text: str) -> set[Decimal]:
+    return _numbers_in(text) | {_NUMBER_WORDS[w] for w in re.findall(r"[a-z]+", text.lower()) if w in _NUMBER_WORDS}
+
+
 def validate_items(prompt: str, data: dict) -> list[dict]:
     """Deterministic checks on the model's interpretation, before any arithmetic: every bullet
-    is used exactly once, verbatim, and each item's numbers occur on its own line."""
+    is used exactly once, verbatim, and each item's numbers occur on its own line. Returns the
+    items with only the fields the capability accepts."""
     bullets = [ln.strip()[1:].strip() for ln in prompt.splitlines() if re.match(r"^\s*[-*]\s", ln)]
-    items = data.get("items")
+    items = data.get("items") if isinstance(data, dict) else None
     if not isinstance(items, list) or len(items) != len(bullets):
         raise CapabilityError(f"expected {len(bullets)} items, one per bullet; got {items!r:.200}")
-    used = []
+    used, clean = [], []
     for it in items:
+        if not isinstance(it, dict):
+            raise CapabilityError(f"item {it!r:.80} is not an object")
         src = str(it.get("source_line", "")).lstrip("-* ").strip()
         match = [b for b in bullets if src and (src in b or b in src)]
         if len(match) != 1:
             raise CapabilityError(f"item {it.get('label')!r} does not quote exactly one bullet")
-        nums = _numbers_in(match[0])
-        for key in ("quantity", "unit_price"):
-            v = _dec(it.get(key, 1), key)
-            if not (v in nums or (key == "quantity" and v == 1)):
-                raise CapabilityError(f"{key} {v} for {it.get('label')!r} is not on its line: {match[0]!r}")
-        used.append(match[0])
+        line = match[0]
+        qty, price = _dec(it.get("quantity", 1), "quantity"), _dec(it.get("unit_price"), "unit_price")
+        if price not in _numbers_in(line):
+            raise CapabilityError(f"unit_price {price} for {it.get('label')!r} is not on its line: {line!r}")
+        if not (qty in _quantities_in(line) or qty == 1):
+            raise CapabilityError(f"quantity {qty} for {it.get('label')!r} is not on its line: {line!r}")
+        if qty != qty.to_integral_value():
+            raise CapabilityError(f"quantity {qty} for {it.get('label')!r} is not a whole number; "
+                                  "it may be swapped with the price")
+        if qty != 1 and _LINE_TOTAL.search(line):
+            raise CapabilityError(f"{line!r} may give a line total rather than a unit price")
+        used.append(line)
+        clean.append({"label": str(it.get("label") or line)[:200], "quantity": str(qty), "unit_price": str(price)})
     if len(set(used)) != len(used):
         raise CapabilityError("two items quote the same bullet")
-    return items
+    return clean
 
 
 def budget_route_applies(prompt: str) -> bool:
@@ -447,8 +618,8 @@ def budget_route(
         if budget not in (None, "", "null") and _dec(budget, "budget") not in _numbers_in(prompt):
             raise CapabilityError(f"budget {budget} is not in the request")
         result = invoke("money.sum_line_items", items=items, currency=currency,
-                        budget=None if budget in (None, "", "null") else budget)
-    except CapabilityError as exc:
+                        budget=None if budget in (None, "", "null") else str(_dec(budget, "budget")))
+    except (CapabilityError, CapabilityFault) as exc:
         outcome.detail = {"declined": str(exc), "model_reply": res.text[:2000]}
         return outcome
     ref = reference_date(prompt)
@@ -484,11 +655,12 @@ class ComputeFirstExecutor:
     model: str = field(default_factory=lambda: llm.EVAL_MODEL)
     ledger: Path | None = None
     interpret: Callable[..., llm.LLMResult] | None = None
+    max_budget_usd: float = 1.0
 
     def _interpret(self, prompt, **kw) -> llm.LLMResult:
         if self.interpret is not None:
             return self.interpret(prompt, **kw)
-        return llm.call(prompt, model=self.model, ledger=self.ledger, **kw)
+        return llm.call(prompt, model=self.model, ledger=self.ledger, max_budget_usd=self.max_budget_usd, **kw)
 
     def run(self, prompt, system, tree, workdir, timeout) -> ExecResult:
         workdir.mkdir(parents=True, exist_ok=True)
@@ -516,4 +688,8 @@ class ComputeFirstExecutor:
         res.cost_usd += spent
         res.llm_calls += calls
         res.handled_by = "llm" if not calls else "llm (mixed route declined)"
+        (workdir / "route.json").write_text(json.dumps(
+            {"route": res.handled_by, "llm_calls": res.llm_calls, "cost_usd": res.cost_usd,
+             **({"declined": outcome.detail.get("declined")} if outcome is not None else {})},
+            indent=2, default=str), encoding="utf-8")
         return res
