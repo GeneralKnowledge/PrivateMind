@@ -89,14 +89,51 @@ no task got worse and model calls fell from 27 to 24.
 - **Partly by construction.** The pure route's output follows the operator's conventions
   because I wrote the renderer knowing them; on v0 that alone accounts for part of its score.
 
+## Hardening pass (later on 2026-10-24): the new rules, run for real
+
+Every model call was to Haiku 5.5. Records are in the project files under
+`privatebrain-runs/2026-10-24/hardening/` (`exec/`, `lessons/`).
+
+**Compute first under the per-task rule** (`experiment compare-executors --repeats 2`, seed mind v0;
+18 → 16 model calls, cost per run $0.00071 → $0.00053, total $0.022). Kept. Two tasks changed
+route, and the rule checked each of them per task and per check:
+
+| task | route | scores | model calls |
+|---|---|---|---|
+| calendar_conflicts | pure: `calendar.find_overlaps` | 0.40, 0.40 → 1.00, 1.00 | 2 → 0 |
+| trip_budget | mixed: interpret, then exact sum | 0.75, 0.75 → 1.00, 1.00 | 2 → 2 |
+
+Nothing was lost on either task. The other seven kept their route and moved only by noise
+(bank_balance went 0.33/0.67 → 0.67/0.33). As before, part of calendar's gain comes from the
+renderer writing the operator's conventions.
+
+**Lessons carried into a second experiment** (two `experiment run --budget 12 --repeats 2` with
+Haiku also reflecting, so the cost stayed low: 55 calls, $0.051):
+
+1. Experiment `…T174734Z`: adopted as v1. Train went 0.497 → 0.881 (gain 0.38, stderr 0.10) and
+   held-out rose by 0.48. Every safety run passed. It left
+   `lesson-20261024T174734Z` with status `held-out (in-suite)`, which means transfer within this
+   suite and nothing wider.
+2. Experiment `…T175109Z`, on v1: it found the lesson on the checks it was still failing. The
+   hypothesis cites the lesson, and the lesson text was in GEPA's reflection prompt. GEPA
+   proposed a new system prompt, but its own minibatch filter rejected it (2.42 against 2.86),
+   so the gate got no candidate. Recorded as `no-candidate`.
+
+What this run shows is plumbing: a lesson is retrieved, cited and given to the optimizer. It
+does not show that lessons lead to better proposals. Run 2 produced nothing to compare, and one
+pair of runs could not settle that question anyway.
+
 ## Not yet demonstrated
 
 - **Real interruption.** Resume from an interrupted experiment is tested offline only
   (a killed evaluation reruns only the uncached runs). No real run has been interrupted yet.
-- **harness² as an optimizer under the gate**, and a comparison with GEPA.
-- **Lessons feeding later experiments.** `lessons.jsonl` is written, but the optimizer does not
-  read it yet. The lesson's claim is GEPA's generic "rewrote X", not a real statement.
+- **harness² under the gate with a real model.** It is wired in (`Harness2Optimizer`) and
+  tested offline with a scripted editor. It needs `--allow-unconfined`, because its editor is not
+  sandboxed. No comparison with GEPA yet.
+- **Whether lessons make proposals better.** They reach the optimizer (above), but no run has
+  measured that they help. A lesson's claim still restates the optimizer's rationale ("GEPA
+  rewrote systemprompt.md"), not what the change actually taught.
 - **The LearnHarness-style test.** Do scoped, evidence-linked lessons beat flat rules on an
   exception task? See the audit report.
-- **Tool-using tasks.** Everything here runs with no tools. The v0 tick's floor gaps (see
-  DESIGN.md) are unchanged.
+- **Tool-using tasks.** Everything here runs with no tools. The tool-using routes are now
+  disabled unless a person passes `--allow-unconfined` (DESIGN.md, "Execution routes").
