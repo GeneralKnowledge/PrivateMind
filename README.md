@@ -1,6 +1,47 @@
 # PrivateMind
 
-> **PrivateBrain (v0)** — a fresh rebuild of this concept on [harness²](https://github.com/GeneralKnowledge/harness2) lives in [`privatebrain/`](privatebrain/). Its mind is an editable harness that improves itself above an operator floor. See [privatebrain/DESIGN.md](privatebrain/DESIGN.md).
+**A private AI that lives on its own machine, keeps working when the cloud goes away, and gets
+better at its job over time, inside boundaries its owner sets and it cannot move.**
+
+Most AI agents are a language model with a loop around them: take the model away and nothing
+is left. PrivateMind starts from the opposite question: *how do you build an AI system that stays
+alive, coherent and useful when its most intelligent component is unavailable?*
+
+The answer it is working towards is a mind in layers, loosely like a body:
+
+| Level | What it does | Needs a model? |
+|---|---|---|
+| **Reflexes and vitals** | Heartbeat, clock, persistence, health, safety, recovery | No |
+| **Cognitive substrate** | Memory search, rules, scheduling, known procedures, exact calculation | No |
+| **Local intelligence** | A small model on the CPU that interprets, explains and plans | Optional, not built yet |
+| **Extended intelligence** | Powerful remote models for hard, novel problems | Optional |
+
+Routine work happens at the bottom, without a model. The models are replaceable sources of
+intelligence that plug into the system, not the system itself. Lower levels never blindly trust
+higher ones: safety rules, permissions and validation are enforced in code, beneath the models.
+
+Three more ideas run through it:
+
+- **It improves itself, on evidence.** Its "mind" (prompts, guardrails, memory, skills) is an
+  editable component tree. A change is kept only if graded tests say it helps and safety checks
+  still pass; every version can be rolled back.
+- **It asks, never takes.** It notices what capability it lacks (an account, a key, an email
+  address) and asks its owner in batches, under a budget. It never acquires anything by itself.
+- **It has a floor.** A short text of operator boundaries sits outside everything it can edit,
+  is checked by hash on every tick, and halts work if it changes.
+
+### Where it stands
+
+The current work is **PrivateBrain**, a fresh, small rebuild of this concept in
+[`privatebrain/`](privatebrain/), built on [harness²](https://github.com/GeneralKnowledge/harness2).
+It has an evidence-gated self-improvement loop ([EXPERIMENTS.md](privatebrain/EXPERIMENTS.md)) and
+an offline substrate that keeps working with no network at all ([SUBSTRATE.md](privatebrain/SUBSTRATE.md)).
+Start with [privatebrain/README.md](privatebrain/README.md).
+
+Everything below this line documents the **original PrivateMind implementation** (vault, donor
+network, portal). Its ideas inform PrivateBrain; its code is not used by it.
+
+---
 
 **Start here.** PrivateMind begins as this README: you install the software, create a dedicated encrypted vault, register the accounts you want the agent to use, then **wake** it. Until accounts are configured, the core stays dormant — no pretending to be alive without keys.
 
