@@ -1,5 +1,7 @@
 # PrivateMind
 
+> **PrivateBrain (v0)** — a fresh rebuild of this concept on [harness²](https://github.com/GeneralKnowledge/harness2) lives in [`privatebrain/`](privatebrain/). Its mind is an editable harness that improves itself above an operator floor. See [privatebrain/DESIGN.md](privatebrain/DESIGN.md).
+
 **Start here.** PrivateMind begins as this README: you install the software, create a dedicated encrypted vault, register the accounts you want the agent to use, then **wake** it. Until accounts are configured, the core stays dormant — no pretending to be alive without keys.
 
 The trusted core keeps private state, tasks, and memory. API keys and SSH identities live in an internal **credential vault**, not in chat logs or the memory database.
