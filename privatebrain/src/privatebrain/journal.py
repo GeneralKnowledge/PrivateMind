@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 
-from .home import Home, append_jsonl, read_jsonl, write_jsonl
+from .home import Home, append_jsonl, locked, read_jsonl, write_jsonl
 
 
 @dataclass
@@ -15,6 +15,14 @@ class Task:
     prompt: str
     domain: str = "general"
     replayable: bool = True
+    # Read by the substrate loop (`substrate.py`); the v0 tick ignores them.
+    capability: str = ""  # a registry capability to call with `args` instead of a prompt
+    args: dict = field(default_factory=dict)
+    requires: list = field(default_factory=list)  # need names that must be satisfied first
+    deadline: str = ""  # ISO datetime
+    not_before: str = ""  # ISO datetime
+    every_s: int = 0  # re-run this often once done
+    origin: str = "operator"  # operator | schedule | model
 
 
 @dataclass
@@ -38,19 +46,21 @@ class Journal:
     def __init__(self, home: Home):
         self.home = home
 
-    def enqueue(self, prompt: str, *, domain: str = "general", replayable: bool = True) -> Task:
-        t = Task(id=new_id(), prompt=prompt, domain=domain, replayable=replayable)
-        append_jsonl(self.home.tasks, asdict(t))
+    def enqueue(self, prompt: str, *, domain: str = "general", replayable: bool = True, **extra) -> Task:
+        t = Task(id=new_id(), prompt=prompt, domain=domain, replayable=replayable, **extra)
+        with locked(self.home.tasks):
+            append_jsonl(self.home.tasks, asdict(t))
         return t
 
     def queued(self) -> list[Task]:
         return [Task(**r) for r in read_jsonl(self.home.tasks)]
 
     def pop(self) -> Task | None:
-        rows = read_jsonl(self.home.tasks)
-        if not rows:
-            return None
-        write_jsonl(self.home.tasks, rows[1:])
+        with locked(self.home.tasks):
+            rows = read_jsonl(self.home.tasks)
+            if not rows:
+                return None
+            write_jsonl(self.home.tasks, rows[1:])
         return Task(**rows[0])
 
     def record(self, ep: Episode) -> None:

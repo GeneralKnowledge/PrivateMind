@@ -413,14 +413,19 @@ def validate_items(prompt: str, data: dict) -> list[dict]:
     return items
 
 
+def budget_route_applies(prompt: str) -> bool:
+    """Whether `budget_route` would take this prompt, decided without calling the model."""
+    if not (re.search(r"\btotal\b", prompt, re.I) and re.search(r"\b(EUR|GBP|USD)\b", prompt)):
+        return False
+    return sum(1 for ln in prompt.splitlines() if re.match(r"^\s*[-*]\s.*\d", ln)) >= 2
+
+
 def budget_route(
     prompt: str, *, system: str = "", interpret: Callable[..., llm.LLMResult]
 ) -> RouteOutcome | None:
     """Mixed route: a model reads the prose line items into JSON; code validates the JSON
     against the prompt, computes the total exactly, and writes the answer."""
-    if not (re.search(r"\btotal\b", prompt, re.I) and re.search(r"\b(EUR|GBP|USD)\b", prompt)):
-        return None
-    if sum(1 for ln in prompt.splitlines() if re.match(r"^\s*[-*]\s.*\d", ln)) < 2:
+    if not budget_route_applies(prompt):
         return None
     res = interpret(
         _EXTRACT.format(prompt=prompt),

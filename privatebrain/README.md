@@ -46,6 +46,22 @@ privatebrain capabilities                             # the deterministic capabi
 
 An interrupted `experiment run` resumes where it stopped: finished task runs are cached.
 
+The substrate loop keeps the brain working with no model reachable (see [SUBSTRATE.md](SUBSTRATE.md)):
+
+```bash
+privatebrain run                                  # persistent loop: senses, safety, known work, recovery
+privatebrain run --offline --until-idle           # as if the remote model were disconnected
+privatebrain task "" --capability money.sum_line_items --args '{"items": [...], "currency": "EUR"}'
+privatebrain task "What do you know about the boiler?"   # answered from local memory (BM25)
+privatebrain task "Weekly review" --every 604800 --deadline 2026-11-01T09:00:00+00:00
+privatebrain senses                               # one reading: clock, process, resources, connectivity, tasks
+privatebrain jobs                                 # each job's state and why it waits or is blocked
+privatebrain events --tail 20                     # the structured event journal
+privatebrain recall "boiler engineer"             # memory search, no model
+privatebrain approve <job>                        # the safety layer reads approvals; models cannot write them
+scripts/offline_demo.sh /tmp/pb-demo              # the real disconnected run (Linux, unshare -rn)
+```
+
 | Setting | Meaning |
 |---|---|
 | `ANTHROPIC_API_KEY` (or a logged-in `claude`) | Credentials for both the agent and the improver |

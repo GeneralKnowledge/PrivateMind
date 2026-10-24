@@ -17,6 +17,9 @@ from .improve import DirectClaudeProposer, approve_pending
 from .journal import Journal
 from .mind import Mind
 from .needs import STATUSES, Needs
+from . import recall, safety
+from .events import EventLog
+from .substrate import AlreadyRunning, Substrate
 
 
 def _brain(home: Home, args) -> Brain:
@@ -43,7 +46,13 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("init", help="create a brain home with the default floor and seed mind")
     t = sub.add_parser("task", help="queue a task")
-    t.add_argument("prompt")
+    t.add_argument("prompt", nargs="?", default="")
+    t.add_argument("--capability", default="", help="call this registry capability instead of a prompt")
+    t.add_argument("--args", default="{}", help="JSON arguments for --capability")
+    t.add_argument("--requires", action="append", default=[], help="a need that must be satisfied first")
+    t.add_argument("--deadline", default="", help="ISO datetime")
+    t.add_argument("--not-before", default="", help="ISO datetime")
+    t.add_argument("--every", type=int, default=0, help="seconds: re-run this often once done")
     t.add_argument("--domain", default="general")
     t.add_argument(
         "--side-effects",
@@ -92,6 +101,24 @@ def main(argv: list[str] | None = None) -> int:
     xs.add_argument("id")
     sub.add_parser("capabilities", help="list deterministic capabilities")
 
+    r = sub.add_parser("run", help="the substrate loop: senses, safety, known work; models optional")
+    r.add_argument("--interval", type=float, default=2.0, help="seconds to sleep when idle")
+    r.add_argument("--ticks", type=int, default=None, help="stop after this many ticks")
+    r.add_argument("--until-idle", action="store_true", help="stop when nothing is runnable")
+    r.add_argument("--offline", action="store_true", help="treat the remote model as disconnected")
+    r.add_argument("--probe-every", type=float, default=30.0, help="seconds between connectivity probes")
+    r.add_argument("--model", default=llm.EVAL_MODEL, help="model for work that needs one")
+    sub.add_parser("senses", help="one reading of every sense, without running the loop")
+    sub.add_parser("jobs", help="the substrate's jobs and their states")
+    e = sub.add_parser("events", help="the structured event journal")
+    e.add_argument("--tail", type=int, default=30)
+    e.add_argument("--type", default=None)
+    rc = sub.add_parser("recall", help="search local memory (BM25, no model)")
+    rc.add_argument("query")
+    ap = sub.add_parser("approve", help="approve a blocked job (the safety layer reads this)")
+    ap.add_argument("job_id")
+    ap.add_argument("--note", default="")
+
     args = p.parse_args(argv)
     home = Home(args.home.expanduser())
     mind = Mind(home)
@@ -108,8 +135,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.cmd == "task":
+        if not args.prompt and not args.capability:
+            print("give a prompt or --capability", file=sys.stderr)
+            return 2
         task = Journal(home).enqueue(
-            args.prompt, domain=args.domain, replayable=not args.side_effects
+            args.prompt, domain=args.domain, replayable=not args.side_effects,
+            capability=args.capability, args=json.loads(args.args), requires=args.requires,
+            deadline=args.deadline, not_before=args.not_before, every_s=args.every,
         )
         print(f"queued {task.id}")
     elif args.cmd == "tick":
@@ -185,6 +217,31 @@ def main(argv: list[str] | None = None) -> int:
             print((home.root / "experiments" / args.id / "RECORD.md").read_text(encoding="utf-8"))
     elif args.cmd == "capabilities":
         print(json.dumps([c.describe() for c in REGISTRY.values()], indent=2))
+    elif args.cmd == "run":
+        sub_ = Substrate(home, forced_offline=args.offline, probe_every_s=args.probe_every,
+                         model=args.model, timeout=args.timeout)
+        try:
+            sub_.run(max_ticks=args.ticks, interval=args.interval, until_idle=args.until_idle)
+        except AlreadyRunning as exc:
+            print(exc, file=sys.stderr)
+            return 1
+        print(json.dumps(sub_.vitals.get("tasks", {}).get("counts", {})))
+    elif args.cmd == "senses":
+        sub_ = Substrate(home)
+        reading, _ = sub_.senses.read({}, breaker_open=False, force_probe=True)
+        print(json.dumps({**reading, "tasks": sub_.task_sense()}, indent=2))
+    elif args.cmd == "jobs":
+        for j in Substrate(home).jobs:
+            why = f"  ({j.reason})" if j.reason else ""
+            print(f"{j.id}  {j.state:<8} {j.route:<36} {(j.prompt or j.capability)[:50]!r}{why}")
+    elif args.cmd == "events":
+        for ev in EventLog(home).tail(args.tail, type=args.type):
+            print(json.dumps(ev))
+    elif args.cmd == "recall":
+        print(recall.render(args.query, recall.search(home, args.query)), end="")
+    elif args.cmd == "approve":
+        safety.approve(home, args.job_id, args.note)
+        print(f"approved {args.job_id}")
     elif args.cmd == "floor":
         if args.floor_cmd == "show":
             print(home.floor.read_text(encoding="utf-8"))
