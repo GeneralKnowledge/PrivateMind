@@ -34,11 +34,24 @@ privatebrain mind log                     # every adopted mind, with its evidenc
 privatebrain mind rollback 0
 ```
 
+Graded experiments and compute-first routing (see [DESIGN.md](DESIGN.md) and [EXPERIMENTS.md](EXPERIMENTS.md)):
+
+```bash
+privatebrain experiment run --budget 60 --repeats 3   # baseline, GEPA candidate, keep or reject
+privatebrain experiment compare-executors             # model-only vs compute-first, same gate
+privatebrain experiment log                           # every experiment, append-only
+privatebrain experiment show <id>                     # one record: hypothesis, scores, diff, decision
+privatebrain capabilities                             # the deterministic capabilities and their limits
+```
+
+An interrupted `experiment run` resumes where it stopped: finished task runs are cached.
+
 | Setting | Meaning |
 |---|---|
 | `ANTHROPIC_API_KEY` (or a logged-in `claude`) | Credentials for both the agent and the improver |
 | `PRIVATEBRAIN_MODEL` | Model for doing tasks (CLI default if unset) |
-| `PRIVATEBRAIN_IMPROVER_MODEL` | Model for harness² editing and selection |
+| `PRIVATEBRAIN_IMPROVER_MODEL` | Model for harness² editing and selection, and GEPA reflection (default `claude-opus-5-5`) |
+| `PRIVATEBRAIN_EVAL_MODEL` | Model the mind runs on in experiments (default `claude-haiku-5-5`) |
 | `privatebrain mind auto-adopt off` | Queue improvements for `mind approve <episode>` instead of adopting them |
 
 Tasks marked `--side-effects` are journaled but never replayed, because harness²
@@ -46,5 +59,9 @@ improves a mind by re-running the same task several times.
 
 ## Status
 
-v0. The offline loop is tested end to end. Runs against real models have not been
-exercised yet; expect to tune the executor's allowed tools and timeouts.
+The graded experiment loop and compute-first routing have run against a real model
+(Haiku 5.5 doing the tasks, Opus 5.5 reflecting for GEPA). In total: 219 model calls,
+$0.41, and one mind change adopted, with held-out going from 0.43 to 1.00. One change was
+rejected as within noise. [EXPERIMENTS.md](EXPERIMENTS.md) has the numbers and what they do
+and do not show. The v0 tick (`privatebrain tick`, with the agentic executor and harness²
+improve) has still not run against a real model.

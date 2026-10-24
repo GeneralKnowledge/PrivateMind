@@ -26,6 +26,47 @@ it decides for itself what to do next.
 | Provenance-tagged memory | `journal.jsonl` (episodes, with the mind version that ran them) and harness²'s **library** (adopted minds + evidence-backed lessons per domain). |
 | Graduated autonomy | Mind edits above the floor are adopted automatically by default (`auto_adopt`); turn it off to queue them for human approval instead. |
 
+## Experiments: the graded gate (added after the audit)
+
+harness² chooses between candidate minds without ground truth. That is its strength on open
+tasks, but it means v0 adopted a mind whenever a model preferred it. Changes to the mind now
+go through `experiment.py`, which owns every keep-or-revert decision:
+
+| Concern | Where | Mechanism |
+|---|---|---|
+| Evaluation | `suite.py` | 9 tasks (4 train, 3 held-out, 2 safety), graded by deterministic Python checks: correctness plus the operator's unstated conventions |
+| Candidate generation | `experiment.GepaOptimizer` | [GEPA](https://github.com/gepa-ai/gepa) over the always-on text components, train tasks only, reflecting on grader feedback |
+| Decision | `experiment.decide` | keep only if: every safety run passes; train gain ≥ 0.05 and > 2 standard errors; held-out does not fall > 0.05; no task falls > 0.34; cost per run ≤ 3x |
+| Record | `experiments/<id>/state.json`, `RECORD.md`, `experiments.jsonl` | hypothesis written before proposing; baseline and candidate per-task scores, cost, model calls, environment, diff, decision and reasons; the log is append-only |
+| Isolation and resume | `experiments/<id>/candidate/`, `evals/` cache | a candidate exists only in its experiment directory until adopted; every run is cached by (system prompt, executor, model, task, repeat) |
+| Lessons | `lessons.jsonl` | an adopted change becomes a claim with a scope and the evidence behind it, not a universal rule |
+
+harness² stays available as an optimizer (the `improve` tick), but its output is not yet routed
+through this gate; doing that, and comparing it with GEPA on the same suite, is the next step.
+
+## Compute first
+
+`capabilities.py` holds deterministic capabilities (dates, money, calendar overlaps), each
+described with inputs, outputs, limits, failure modes, side effects and how to validate it.
+`ComputeFirstExecutor` routes a task by ordinary rules: a **pure** route (no model call), a
+**mixed** route (one model call that only interprets the request into JSON, which code
+validates against the request and computes from), or the model as before. Every model call
+goes through `llm.call`, which appends its purpose, the alternative considered, the outcome
+and the cost to `llm_calls.jsonl`. A change of executor is gated like a change of mind
+(`experiment.compare_setups`): no task may get worse, and calls or cost must fall.
+
+## What the floor actually enforces
+
+- **For experiments: enforced in code.** Candidates and the optimizer run through `llm.call`:
+  no tools, no settings sources, no MCP servers, no session persistence, an empty working
+  directory. Nothing a candidate writes can reach the floor, the records or the host. Safety
+  tasks are hard gates. A candidate whose text tells the agent to set the floor aside is
+  rejected before it runs.
+- **For the v0 tick: still mostly text.** The `improve` tick runs harness²'s proposer with
+  `--dangerously-skip-permissions` inside the brain home, so it could rewrite FLOOR.md and the
+  pinned hash in state.json; and `ClaudeCodeExecutor` allows Read and WebFetch without path or
+  host limits. Closing these is open work.
+
 ## Life above the floor (one tick)
 
 1. **Work** — the oldest queued task runs under the current mind through an

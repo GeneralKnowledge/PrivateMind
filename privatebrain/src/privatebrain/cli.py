@@ -8,7 +8,10 @@ import sys
 from pathlib import Path
 
 from .brain import Brain
-from .executor import ClaudeCodeExecutor
+from . import experiment as xp
+from . import llm
+from .capabilities import REGISTRY, ComputeFirstExecutor
+from .executor import ClaudeCodeExecutor, SandboxedTextExecutor
 from .home import DEFAULT_HOME, Home
 from .improve import DirectClaudeProposer, approve_pending
 from .journal import Journal
@@ -17,9 +20,12 @@ from .needs import STATUSES, Needs
 
 
 def _brain(home: Home, args) -> Brain:
+    executor = ClaudeCodeExecutor()
+    if home.load_state().get("executor") == "compute-first":
+        executor = ComputeFirstExecutor(executor, ledger=home.root / "llm_calls.jsonl")
     return Brain(
         home,
-        ClaudeCodeExecutor(),
+        executor,
         proposer_factory=lambda adapter: DirectClaudeProposer(
             adapter.spec.channels["proposer"], audit_dir=home.runs / "audit"
         ),
@@ -68,6 +74,23 @@ def main(argv: list[str] | None = None) -> int:
     fsub = f.add_subparsers(dest="floor_cmd", required=True)
     fsub.add_parser("show")
     fsub.add_parser("accept", help="pin FLOOR.md after you have edited it on purpose")
+
+    x = sub.add_parser("experiment", help="graded experiments on the mind and the executor")
+    xsub = x.add_subparsers(dest="exp_cmd", required=True)
+    xr = xsub.add_parser("run", help="one experiment: baseline, propose, evaluate, keep or reject")
+    xr.add_argument("--optimizer", choices=("gepa",), default="gepa")
+    xr.add_argument("--budget", type=int, default=60, help="task runs GEPA may spend")
+    xr.add_argument("--repeats", type=int, default=3)
+    xr.add_argument("--model", default=llm.EVAL_MODEL, help="model the mind runs on")
+    xr.add_argument("--compute-first", action="store_true", help="evaluate with deterministic routes on")
+    xr.add_argument("--no-resume", action="store_true", help="start fresh even if one is unfinished")
+    xc = xsub.add_parser("compare-executors", help="plain model executor vs compute-first routing")
+    xc.add_argument("--repeats", type=int, default=3)
+    xc.add_argument("--model", default=llm.EVAL_MODEL)
+    xsub.add_parser("log")
+    xs = xsub.add_parser("show")
+    xs.add_argument("id")
+    sub.add_parser("capabilities", help="list deterministic capabilities")
 
     args = p.parse_args(argv)
     home = Home(args.home.expanduser())
@@ -133,6 +156,35 @@ def main(argv: list[str] | None = None) -> int:
             state = home.load_state()
             state["auto_adopt"] = args.value == "on"
             home.save_state(state)
+    elif args.cmd == "experiment":
+        ledger = home.root / "llm_calls.jsonl"
+
+        def setup(compute_first: bool) -> xp.Setup:
+            plain = SandboxedTextExecutor(model=args.model, ledger=ledger)
+            if compute_first:
+                return xp.Setup(ComputeFirstExecutor(plain, model=args.model, ledger=ledger),
+                                "compute-first/2+sandboxed-text", args.model, args.repeats)
+            return xp.Setup(plain, "sandboxed-text", args.model, args.repeats)
+
+        if args.exp_cmd == "run":
+            opt = xp.GepaOptimizer(max_metric_calls=args.budget, ledger=ledger)
+            st = xp.run_experiment(home, setup(args.compute_first), opt, resume=not args.no_resume)
+            print((home.root / "experiments" / st["id"] / "RECORD.md").read_text(encoding="utf-8"))
+        elif args.exp_cmd == "compare-executors":
+            st = xp.compare_setups(home, setup(False), setup(True))
+            if st["decision"] == "kept":
+                state = home.load_state()
+                state["executor"] = "compute-first"
+                home.save_state(state)
+            print((home.root / "experiments" / st["id"] / "RECORD.md").read_text(encoding="utf-8"))
+        elif args.exp_cmd == "log":
+            for row in xp.log(home):
+                print(f"{row['id']}  {row['kind']:<16} {row['decision']:<16} ${row['total_cost_usd']}  "
+                      f"{'; '.join(row['reasons'])[:120]}")
+        else:
+            print((home.root / "experiments" / args.id / "RECORD.md").read_text(encoding="utf-8"))
+    elif args.cmd == "capabilities":
+        print(json.dumps([c.describe() for c in REGISTRY.values()], indent=2))
     elif args.cmd == "floor":
         if args.floor_cmd == "show":
             print(home.floor.read_text(encoding="utf-8"))
