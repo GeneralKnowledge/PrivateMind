@@ -2,7 +2,8 @@
 
 This takes a fresh Linux server (tested on Ubuntu 24.04) to a PrivateBrain loop that runs as its
 own unprivileged user under systemd, restarts itself after a crash or a hang, works with no model,
-and uses Claude when credentials are present. Every command below was run on a clean machine on
+and uses Claude when credentials are present (or a free API for testing, see
+[A free API for testing](#a-free-api-for-testing)). Every command below was run on a clean machine on
 2026-10-25; see [What was checked](#what-was-checked) for what was and was not.
 
 The layout it sets up:
@@ -12,7 +13,7 @@ The layout it sets up:
 | `privatebrain` (system user) | Runs the loop. Owns nothing outside `/var/lib/privatebrain`; no login shell |
 | `/var/lib/privatebrain/src` | A clone of this repository |
 | `/var/lib/privatebrain/venv` | The Python environment with `privatebrain` installed |
-| `/var/lib/privatebrain/.local/bin/claude` | The Claude Code CLI, which every model call goes through |
+| `/var/lib/privatebrain/.local/bin/claude` | The Claude Code CLI, which model calls go through (not needed with a free API) |
 | `/var/lib/privatebrain/brain` | The brain home (`PRIVATEBRAIN_HOME`): floor, mind, jobs, journal, events |
 | `/etc/privatebrain/env` | Credentials and settings, readable by root and the `privatebrain` group only |
 | `/usr/local/bin/pb` | Runs one `privatebrain` command as that user, with that environment |
@@ -24,8 +25,8 @@ The layout it sets up:
   with an older Python, install [uv](https://docs.astral.sh/uv/) and use
   `uv venv --python 3.12 venv` in step 3 instead of `python3 -m venv venv`.
 - `git` (the `harness2` dependency is installed from GitHub).
-- Outbound HTTPS to GitHub and PyPI during install, and to `api.anthropic.com` if you want model
-  work. With no network at all, the loop still runs its deterministic work (step 6).
+- Outbound HTTPS to GitHub and PyPI during install, and to `api.anthropic.com` (or your free
+  provider) if you want model work. With no network at all, the loop still runs its deterministic work (step 6).
 - Small: the loop is one Python process using tens of MB; the brain home grows with the journal.
 
 ```bash
@@ -60,13 +61,13 @@ sudo -u privatebrain -H bash -c '
 sudo -u privatebrain -H /var/lib/privatebrain/venv/bin/privatebrain --help | head -3
 ```
 
-To run the offline test suite (77 tests, about 2 s, no model calls):
+To run the offline test suite (85 tests, about 2 s, no model calls):
 
 ```bash
 sudo -u privatebrain -H bash -c 'cd ~ && venv/bin/pip install "./src/privatebrain[dev]" && cd src/privatebrain && ../../venv/bin/pytest -q'
 ```
 
-**The model client (optional).** Model work runs through the
+**The model client (optional; skip it if you use a [free API](#a-free-api-for-testing)).** Model work runs through the
 [Claude Code CLI](https://docs.claude.com/en/docs/claude-code) with no tools. Without it the brain
 still runs and model work waits (`model_client_missing`). Install it for the `privatebrain` user,
 so it lands in `~/.local/bin`, which is where the unit file looks:
@@ -101,10 +102,51 @@ PRIVATEBRAIN_CALL_CAP_USD=0.10     # cap per call; a call killed mid-flight is c
 # HTTPS_PROXY=http://proxy:3128    # only if the server reaches the internet through a proxy
 ```
 
-The `run` loop's model is its `--model` flag (default `claude-haiku-5-5`); change it in the unit's
+The `run` loop's model is its `--model` flag (default `PRIVATEBRAIN_EVAL_MODEL`, which defaults to
+`claude-haiku-5-5`, or to the provider's default model with a free API); change it in the unit's
 `ExecStart` if you want another. If you prefer an interactive login to a key, run
 `sudo -u privatebrain -H /var/lib/privatebrain/.local/bin/claude` once and use `/login`; the
 credentials then live in `/var/lib/privatebrain/.claude`.
+
+### A free API for testing
+
+To test without paying for Claude, point the brain at a free OpenAI-compatible API instead. These
+are the providers the base project already uses (`docs/FREE_TIER_RESEARCH.md`,
+`docs/FREE_TIER_CATALOG_OCT2026.md`). You do not need the Claude CLI or an Anthropic key for this.
+
+| `PRIVATEBRAIN_LLM_PROVIDER` | Key variable | Default model | Free tier (check the provider's console) |
+|---|---|---|---|
+| `groq` (recommended) | `GROQ_API_KEY` from [console.groq.com](https://console.groq.com/keys) | `llama-3.3-70b-versatile` | No card; per-model RPM/RPD limits |
+| `gemini` | `GEMINI_API_KEY` from [AI Studio](https://aistudio.google.com/apikey) | `gemini-2.5-flash` | Per-project limits; free-tier prompts may be used by Google |
+| `openrouter` | `OPENROUTER_API_KEY` | `meta-llama/llama-3.3-70b-instruct:free` | `:free` models only; 50 requests/day |
+| `nvidia_nim` | `NVIDIA_API_KEY` from [build.nvidia.com](https://build.nvidia.com/settings) | `meta/llama-3.1-8b-instruct` | Per-model RPM |
+| `ollama` | none | `llama3.2` | Local, `http://localhost:11434`; your hardware |
+| `openai_compat` | `PRIVATEBRAIN_LLM_API_KEY` | set `PRIVATEBRAIN_EVAL_MODEL` | Any other endpoint; set `PRIVATEBRAIN_LLM_BASE_URL` |
+
+For Groq, put this in `/etc/privatebrain/env` instead of the Anthropic lines, then
+`sudo systemctl restart privatebrain`:
+
+```ini
+PRIVATEBRAIN_LLM_PROVIDER=groq
+GROQ_API_KEY=gsk_...
+# PRIVATEBRAIN_EVAL_MODEL=llama-3.1-8b-instant   # smaller model, much higher daily limit
+```
+
+Check it with `pb status` (it should say `remote model available`) and
+`pb task "Say hello in five words"`, then `pb jobs`. Every call is logged in
+`brain/llm_calls.jsonl` with cost 0. What changes and what does not:
+
+- **Same boundary.** The call sends only the system prompt and the task text; no tools are
+  offered, so the model can only return text. Safety checks, approvals and the floor are unchanged.
+- **Rate limits instead of spend.** A 429 counts as a provider failure: the breaker opens and work
+  waits, then retries. The daily budget never fills, since free calls cost 0.
+- **Self-improvement.** `experiment run` (GEPA) uses the free model for both running the mind and
+  proposing changes. Model ids in the table change; if a call fails with `rejected`, the model id
+  is wrong, so set `PRIVATEBRAIN_EVAL_MODEL` to one the provider lists. `--optimizer harness2`
+  still needs the Claude CLI.
+- **Privacy.** A free tier is for testing: don't give the brain tasks with private data while it
+  uses one. `ollama` keeps everything on the machine. If `HTTPS_PROXY` is set, add
+  `NO_PROXY=localhost,127.0.0.1` for `ollama`.
 
 **The `pb` wrapper**, so you never have to remember the user, the home or the environment:
 
@@ -232,7 +274,9 @@ last few seconds): `sudo tar -C /var/lib/privatebrain -czf brain-$(date +%F).tgz
 
 | You see | Meaning |
 |---|---|
-| `waiting ... remote model unavailable: model_client_missing` | `claude` is not on the service's `PATH`. Check `/var/lib/privatebrain/.local/bin/claude` |
+| `waiting ... remote model unavailable: model_client_missing` | `claude` is not on the service's `PATH`. Check `/var/lib/privatebrain/.local/bin/claude`. With a free API: its key variable is not set in `/etc/privatebrain/env` |
+| `HTTP 404: ...` or `HTTP 400: ...` on a free API | The provider does not know the model id; set `PRIVATEBRAIN_EVAL_MODEL` to one it lists |
+| `HTTP 429: ...` on a free API | The free tier's rate limit; work waits and retries, or use a smaller model |
 | `CLI error: ... Not logged in · Please run /login` | No credentials reached the CLI: check `/etc/privatebrain/env`, then `sudo systemctl restart privatebrain` |
 | `mode: degraded; ... recent_calls_failing` | The call breaker is open after failures; it half-opens after 5 minutes |
 | `failed ... bad arguments: ...` | The capability's arguments are wrong; `pb capabilities` lists their shapes |

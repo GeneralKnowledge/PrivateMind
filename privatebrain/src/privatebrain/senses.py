@@ -19,10 +19,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable
 
+from . import llm
 from .events import event
 from .home import Home
 
-PROVIDER_URL = os.environ.get("PRIVATEBRAIN_PROVIDER_URL", "https://api.anthropic.com/")
+PROVIDER_URL = os.environ.get("PRIVATEBRAIN_PROVIDER_URL",
+                              llm.PROVIDER.base_url + "/" if llm.PROVIDER.http else "https://api.anthropic.com/")
 DISK_FLOOR_MB = 200
 MEM_FLOOR_MB = 128
 CLOCK_JUMP_S = 120
@@ -61,6 +63,9 @@ def provider_probe(timeout: float = 3.0) -> bool:
 
 
 def cli_probe() -> bool:
+    """Is there a way to make a model call: the `claude` CLI, or an API key for an HTTP provider."""
+    if llm.PROVIDER.http:
+        return bool(llm.PROVIDER.api_key) or not llm.PROVIDER.needs_key
     return shutil.which("claude") is not None
 
 
