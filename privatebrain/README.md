@@ -23,19 +23,28 @@ This is a fresh, small rebuild of the [PrivateMind](../README.md) concept, not a
 | [DESIGN.md](DESIGN.md) | How the needs, executive and floor map onto the code |
 | [SUBSTRATE.md](SUBSTRATE.md) | The offline loop, senses and safety layer, and the disconnected run |
 | [EXPERIMENTS.md](EXPERIMENTS.md) | The graded self-improvement gate and what real-model runs showed |
+| [SERVER.md](SERVER.md) | Running it on a server: dedicated user, systemd service, watchdog, credentials, health |
 
 ## Install
 
-Python 3.12 or 3.13, plus the [Claude Code CLI](https://docs.claude.com/en/docs/claude-code),
-which every model call goes through (with no tools unless you say otherwise; see
-[DESIGN.md](DESIGN.md#execution-routes-what-can-run-model-output-and-how-it-is-confined)).
+**On a server**, follow [SERVER.md](SERVER.md): it sets up a dedicated user, a systemd service
+that restarts a dead or hung loop, and a `pb` wrapper for daily commands.
+
+**For development**: Python 3.12 or 3.13 and `git`. The
+[Claude Code CLI](https://docs.claude.com/en/docs/claude-code) is optional; every model call goes
+through it (with no tools unless you say otherwise; see
+[DESIGN.md](DESIGN.md#execution-routes-what-can-run-model-output-and-how-it-is-confined)), and
+without it the brain still runs and model work waits.
 
 ```bash
-cd privatebrain
-uv venv --python 3.12 .venv && source .venv/bin/activate
-uv pip install -e '.[dev]'
+git clone https://github.com/GeneralKnowledge/PrivateMind.git && cd PrivateMind/privatebrain
+python3 -m venv .venv && source .venv/bin/activate   # or: uv venv --python 3.12 .venv
+pip install -e '.[dev]'
 pytest -q            # offline: scripted agent + scripted editor, real harness² recursion
 ```
+
+Credentials for model work: `ANTHROPIC_API_KEY`, a `CLAUDE_CODE_OAUTH_TOKEN` from
+`claude setup-token`, or a logged-in `claude`.
 
 ## Use
 

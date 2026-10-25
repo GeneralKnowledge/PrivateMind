@@ -1,0 +1,9 @@
+#!/bin/sh
+# Run one `privatebrain` command as the privatebrain user, with the same environment as
+# privatebrain.service (credentials and settings from /etc/privatebrain/env). Install as
+# /usr/local/bin/pb; see SERVER.md. Usage: pb status | pb task "..." | pb approve <job> ...
+exec sudo -u privatebrain -H -- /bin/sh -c 'umask 077
+  set -a; [ -r /etc/privatebrain/env ] && . /etc/privatebrain/env; set +a
+  export PRIVATEBRAIN_HOME="${PRIVATEBRAIN_HOME:-/var/lib/privatebrain/brain}"
+  export PATH=/var/lib/privatebrain/.local/bin:/var/lib/privatebrain/venv/bin:/usr/local/bin:/usr/bin:/bin
+  cd /var/lib/privatebrain && exec privatebrain "$@"' pb "$@"
