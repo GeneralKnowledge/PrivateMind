@@ -1,0 +1,10 @@
+# Kills a loop that holds its lock but has stopped beating (`privatebrain health` exit 1);
+# privatebrain.service then restarts it. A dead loop (exit 2) is restarted by Restart=always.
+[Unit]
+Description=PrivateBrain watchdog: kill a stalled loop
+After=privatebrain.service
+
+[Service]
+Type=oneshot
+Environment=PRIVATEBRAIN_HOME=/var/lib/privatebrain/brain
+ExecStart=/bin/sh -c '/usr/sbin/runuser -u privatebrain -- /var/lib/privatebrain/venv/bin/privatebrain health >/dev/null; if [ $? -eq 1 ]; then echo "stalled: killing"; systemctl kill -s KILL privatebrain.service; fi'

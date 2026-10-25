@@ -84,19 +84,9 @@ An idle loop is not stale: it writes a heartbeat every `--interval` seconds whet
 is work. A heartbeat is stale after `max(30 s, 3 x interval + 10 s)`.
 
 `scripts/supervise.sh <home>` is a minimal supervisor that does exactly the table above. With
-systemd, the equivalent is a service that restarts on exit plus a timer that kills a stalled loop:
-
-```ini
-# ~/.config/systemd/user/privatebrain.service
-[Service]
-ExecStart=%h/.local/bin/privatebrain run
-Restart=always
-RestartSec=5
-# ~/.config/systemd/user/privatebrain-watchdog.service (run every minute by a .timer)
-[Service]
-Type=oneshot
-ExecStart=/bin/sh -c 'privatebrain health >/dev/null; [ $? -eq 1 ] && systemctl --user kill -s KILL privatebrain || true'
-```
+systemd, the equivalent is a service that restarts on exit plus a timer that kills a stalled loop.
+Those units are in [`deploy/systemd/`](deploy/systemd/), and [SERVER.md](SERVER.md) installs them
+under a dedicated user.
 
 **What is guaranteed, and what it depends on.**
 
@@ -184,5 +174,6 @@ Cost of the whole run: 5 completed model calls, $0.0026.
   the queue. Its tool-using executor and harness² improver need `--allow-unconfined` (DESIGN.md).
 - **Not an OS sandbox.** The boundary is that no unattended model has tools (`llm.call`), plus the
   checks above. Another program running as the operator's user can still write any file in the
-  brain home. Running the brain as its own user, with `FLOOR.md` and `approvals.jsonl` owned by the
-  operator and read-only to it, would make the floor an OS-enforced boundary; that is not set up here.
+  brain home. [SERVER.md](SERVER.md) runs the brain as its own user, which keeps the operator's
+  other programs out; making `FLOOR.md` and `approvals.jsonl` owned by the operator and read-only
+  to the brain, so the floor is an OS-enforced boundary, is still not set up.

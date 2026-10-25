@@ -1,0 +1,37 @@
+# The PrivateBrain substrate loop, run as its own unprivileged user.
+# Install: see SERVER.md. Paths assume the layout there (/var/lib/privatebrain).
+[Unit]
+Description=PrivateBrain substrate loop
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=privatebrain
+Group=privatebrain
+WorkingDirectory=/var/lib/privatebrain
+Environment=HOME=/var/lib/privatebrain
+Environment=PRIVATEBRAIN_HOME=/var/lib/privatebrain/brain
+# `claude` (the model client) and the venv must be on PATH; systemd's default PATH has neither.
+Environment=PATH=/var/lib/privatebrain/.local/bin:/var/lib/privatebrain/venv/bin:/usr/local/bin:/usr/bin:/bin
+# Credentials and PRIVATEBRAIN_* settings. Optional: without it the loop runs offline-only.
+EnvironmentFile=-/etc/privatebrain/env
+ExecStart=/var/lib/privatebrain/venv/bin/privatebrain run --interval 5
+Restart=always
+RestartSec=5
+
+# The brain needs to write only its own home (brain/, plus ~/.claude for the model client).
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/privatebrain
+PrivateTmp=yes
+UMask=0077
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target
